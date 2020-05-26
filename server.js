@@ -2,6 +2,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const passport = require("passport");
+const cors = require("cors");
 
 const users = require("./routes/api/users");
 
@@ -14,6 +15,7 @@ app.use(express.urlencoded({
     extended: false
 }));
 
+app.use(cors);
 
 // Gets the URI of the MongoDB database used by app
 const db = require("./config/keys").mongoURI;

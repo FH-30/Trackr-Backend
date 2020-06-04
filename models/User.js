@@ -19,7 +19,7 @@ const UserSchema = new Schema({
         type: String,
         required: true,
         unique: true,
-        lowercase: true,
+        lowercase: true
     },
     date: {
         type: Date,

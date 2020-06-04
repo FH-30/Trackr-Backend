@@ -3,6 +3,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const passport = require("passport");
 const users = require("./routes/api/users");
+const data = require("./routes/api/data");
+
 // Initialize app to a server
 const app = express();
 const cors = require("cors");
@@ -31,6 +33,7 @@ require("./config/passport")(passport);
 
 // Routes
 app.use("/api/users", users);
+app.use("/api/data", data);
 
 // Uses process.env.PORT if available otherwise 5000
 const port = process.env.PORT || 5000;

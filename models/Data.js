@@ -32,7 +32,10 @@ const DataSchema = new Schema ({
         unique: true,
         lowercase: true
     },
-    jobs: [JobSchema]
+    jobs: {
+        type: [JobSchema],
+        required: true
+    }
 });
 
 module.exports = mongoose.model("data", DataSchema);

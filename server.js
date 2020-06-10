@@ -3,7 +3,6 @@ const express = require("express");
 const mongoose = require("mongoose");
 const passport = require("passport");
 const users = require("./routes/api/users");
-const data = require("./routes/api/data");
 
 // Initialize app to a server
 const app = express();
@@ -21,7 +20,7 @@ app.use(express.urlencoded({
 const db = require("./config/keys").mongoURI;
 
 // Connect to the specified MongoDB database
-mongoose.connect(db, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true})
+mongoose.connect(db, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true, useFindAndModify: false})
     .then(() => console.log("MongoDB successfully connected"))
     .catch(err => console.log(err));
 
@@ -33,7 +32,6 @@ require("./config/passport")(passport);
 
 // Routes
 app.use("/api/users", users);
-app.use("/api/data", data);
 
 // Uses process.env.PORT if available otherwise 5000
 const port = process.env.PORT || 5000;

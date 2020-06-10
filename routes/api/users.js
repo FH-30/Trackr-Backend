@@ -55,6 +55,7 @@ router.post("/signup", (req, res) => {
                                 throw err;
                             }
                             newUser.password = hash;
+                            newUser.jobs = [];
                             newUser
                                 .save()
                                 .then(user => res.json(user))
@@ -116,6 +117,7 @@ router.post("/signin", (req, res) => {
                 },
                 (err, token) => {
                   res.json({
+                    user,
                     success: true,
                     token: "Bearer " + token
                   });
@@ -127,6 +129,34 @@ router.post("/signin", (req, res) => {
                 .json({ passwordincorrect: "Password incorrect" });
             }
         });
+    });
+});
+
+router.get("/", (req, res) => {
+    console.log(req.body.data);
+    User.findOne(req.body.data).then(user => {
+        if (!user) {
+            return res.status(404).json({data: "User of specified Data not present in Database"});
+        } else {
+            return res.json(user);
+        }
+    })
+})
+
+router.put("/", (req, res) => {
+    User.findOneAndUpdate({username: req.body.username}, {$set: req.body.update}, {new: true}, (err, updatedUser) => {
+        if (err) {
+            if (err.codeName === "DuplicateKey") {
+                return res.status(400).json({msg: "Another User already has the Field passed in", isDuplicate: true})
+            }
+            err.isDuplicate = false;
+            return res.status(400).json(err);
+        } else {
+            if (updatedUser === null) {
+                return res.status(404).json({data: "User of specified Username not present in Database"});
+            }
+            return res.json(updatedUser);
+        }
     });
 });
 

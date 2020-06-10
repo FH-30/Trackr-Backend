@@ -2,6 +2,25 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema; // Gets the Schema class of Mongoose
 
+const JobSchema = new Schema ({
+    _id: false,
+    company: {
+        type: String,
+        required: true
+    },
+    role: {
+        type: String,
+        required: true
+    },
+    status: {
+        type: String,
+        required: true
+    },
+    interviewDate: {
+        type: Date
+    }
+});
+
 //Create Schema(A template in which data mase using it has to be structured like)
 const UserSchema = new Schema({
     username: {
@@ -20,6 +39,10 @@ const UserSchema = new Schema({
         required: true,
         unique: true,
         lowercase: true
+    },
+    jobs: {
+        type: [JobSchema],
+        required: true
     },
     date: {
         type: Date,

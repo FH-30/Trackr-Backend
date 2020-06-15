@@ -133,7 +133,6 @@ router.post("/signin", (req, res) => {
 });
 
 router.get("/", (req, res) => {
-    console.log(req.body.data);
     User.findOne(req.body.data).then(user => {
         if (!user) {
             return res.status(404).json({data: "User of specified Data not present in Database"});
@@ -143,7 +142,20 @@ router.get("/", (req, res) => {
     })
 })
 
-router.put("/", (req, res) => {
+router.put("/", async (req, res) => {
+    const newPassword = req.body.update.password;
+    if (newPassword !== undefined) {
+        req.body.update.password = await new Promise((resolve, reject) => { 
+            bcrypt.genSalt(10, (err, salt) => {
+                bcrypt.hash(newPassword, salt, (err, hash) => {
+                    if (err) {
+                        reject(err);
+                    }
+                    resolve(hash); 
+                });
+            });
+        });
+    }
     User.findOneAndUpdate({username: req.body.username}, {$set: req.body.update}, {new: true}, (err, updatedUser) => {
         if (err) {
             if (err.codeName === "DuplicateKey") {

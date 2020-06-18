@@ -4,6 +4,10 @@ const Schema = mongoose.Schema; // Gets the Schema class of Mongoose
 
 const JobSchema = new Schema ({
     _id: false,
+    id: {
+        type: Number,
+        required: true
+    },
     company: {
         type: String,
         required: true
@@ -17,7 +21,11 @@ const JobSchema = new Schema ({
         required: true
     },
     interviewDate: {
-        type: Date
+        type: String
+    },
+    label: {
+        type: String,
+        required: true
     }
 });
 
@@ -46,7 +54,7 @@ const UserSchema = new Schema({
     },
     date: {
         type: Date,
-        default: Date.now
+        default: new Date()
     }
 });
 

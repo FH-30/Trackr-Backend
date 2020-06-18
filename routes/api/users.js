@@ -9,6 +9,9 @@ const isEmpty = require("is-empty");
 // Functions to validate signin/signup
 const validateSignUpInput = require("../../validation/signup");
 const validateSignInInput = require("../../validation/signin");
+const labeller = require("../../Config/labeller").label;
+const sendEmail = require("../../Config/email");
+const scheduler = require("../../Config/scheduler");
 
 // Load User model (Using Schema made in another file)
 const User = require("../../models/User");
@@ -144,6 +147,7 @@ router.get("/", (req, res) => {
 
 router.put("/", async (req, res) => {
     const newPassword = req.body.update.password;
+    const updatedJob = req.body.updatedJob;
     if (newPassword !== undefined) {
         req.body.update.password = await new Promise((resolve, reject) => { 
             bcrypt.genSalt(10, (err, salt) => {
@@ -156,16 +160,77 @@ router.put("/", async (req, res) => {
             });
         });
     }
+    const checkDuplicateAndGetJobToUpdate = () => {
+        let first = true;
+        const toReturn = {};
+        toReturn.jobToUpdate = null;
+        toReturn.duplicatePresent = false;
+        req.body.update.jobs.map(job => {
+            if (updatedJob.company === job.company && updatedJob.role === job.role) {
+                if (first) {
+                    first = false;
+                    toReturn.jobToUpdate = job;
+                } else {
+                    toReturn.duplicatePresent = true;
+                    let first = true;
+                    toReturn.removeDuplicateArr = req.body.update.jobs.filter(job => {
+                        const notDuplicate = updatedJob.company !== job.company && updatedJob.role !== job.role
+                        if (!notDuplicate && first) {
+                            first = false;
+                            return true;
+                        }
+                        return notDuplicate;
+                    });
+                }
+            }
+        });
+        return toReturn;
+    }
+    if (req.body.add || req.body.updated) {
+        const validation = checkDuplicateAndGetJobToUpdate();
+        if (validation.duplicatePresent) {
+            return res.status(400).json({error: "Job already in Dashboard", jobs: validation.removeDuplicateArr});
+        }
+        if (req.body.add) {
+            const label = labeller(updatedJob);
+            updatedJob.label = label;
+            validation.jobToUpdate.label = label;
+        }
+    }
     User.findOneAndUpdate({username: req.body.username}, {$set: req.body.update}, {new: true}, (err, updatedUser) => {
         if (err) {
             if (err.codeName === "DuplicateKey") {
-                return res.status(400).json({msg: "Another User already has the Field passed in", isDuplicate: true})
+                return res.status(400).json({error: "Another User already has the Field passed in", isDuplicate: true})
             }
             err.isDuplicate = false;
             return res.status(400).json(err);
         } else {
             if (updatedUser === null) {
-                return res.status(404).json({data: "User of specified Username not present in Database"});
+                return res.status(404).json({error: "User of specified Username not present in Database"});
+            }
+            const cancelSchedule = () => {
+                scheduler.cancelSchedule(updatedJob.label);
+            }
+            if (req.body.delete) {
+                cancelSchedule();
+            } else {
+                const oneDayMiliseconds = 60 * 60 * 24 * 1000;
+                const thirtySecondsMiliseconds = 30 * 1000;
+                const futureDate = new Date(new Date(updatedJob.interviewDate) - thirtySecondsMiliseconds);
+                const toSchedule = () => {
+                    const emailSubject = `REMINDER: Interview with ${updatedJob.company} for ${updatedJob.role} position`;
+                    const emailHTML = `<p>Your interview with ${updatedJob.company} for ${updatedJob.role} is happening in 30 seconds! Be sure to prepare for it!</P>`;
+                    sendEmail(updatedUser.email, emailSubject, emailHTML);
+                }
+                const schedule = () => {
+                    scheduler.schedule(updatedJob.label, futureDate, toSchedule);
+                }
+                if (req.body.add) {
+                    schedule();
+                } else if (req.body.updated) {
+                    cancelSchedule();
+                    schedule();
+                }
             }
             return res.json(updatedUser);
         }

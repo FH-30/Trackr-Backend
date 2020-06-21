@@ -148,6 +148,7 @@ router.get("/", (req, res) => {
 router.put("/", async (req, res) => {
     const newPassword = req.body.update.password;
     const updatedJob = req.body.updatedJob;
+    const hasInterviewDate = !isEmpty(updatedJob.interviewDate);
     if (newPassword !== undefined) {
         req.body.update.password = await new Promise((resolve, reject) => { 
             bcrypt.genSalt(10, (err, salt) => {
@@ -186,8 +187,8 @@ router.put("/", async (req, res) => {
         });
         return toReturn;
     }
+    const validation = checkDuplicateAndGetJobToUpdate();
     if (req.body.add || req.body.updated) {
-        const validation = checkDuplicateAndGetJobToUpdate();
         if (validation.duplicatePresent) {
             return res.status(400).json({error: "Job already in Dashboard", jobs: validation.removeDuplicateArr});
         }
@@ -196,6 +197,12 @@ router.put("/", async (req, res) => {
             updatedJob.label = label;
             validation.jobToUpdate.label = label;
         }
+    }
+    if (hasInterviewDate) {
+        const eightHoursMiliseconds = 60 * 60 * 8 * 1000; // frontend time 8 hours ahead
+        const reversedEightHoursDate = new Date(new Date(updatedJob.interviewDate) - eightHoursMiliseconds);
+        validation.jobToUpdate.interviewDate = reversedEightHoursDate;
+        updatedJob.interviewDate = reversedEightHoursDate;
     }
     User.findOneAndUpdate({username: req.body.username}, {$set: req.body.update}, {new: true}, (err, updatedUser) => {
         if (err) {

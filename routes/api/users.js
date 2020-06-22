@@ -9,7 +9,6 @@ const isEmpty = require("is-empty");
 // Functions to validate signin/signup
 const validateSignUpInput = require("../../validation/signup");
 const validateSignInInput = require("../../validation/signin");
-const labeller = require("../../Config/labeller").label;
 const sendEmail = require("../../Config/email");
 const scheduler = require("../../Config/scheduler");
 
@@ -149,7 +148,6 @@ router.put("/", async (req, res) => {
     const newPassword = req.body.update.password;
     const updatedJob = req.body.updatedJob;
     const hasInterviewDate = !isEmpty(updatedJob.interviewDate);
-    console.log(updatedJob);
     if (updatedJob.status === "applied" && hasInterviewDate) {
         return res.status(400).json({error: "Applied status shouldn't have any deadline date"});
     }
@@ -196,11 +194,6 @@ router.put("/", async (req, res) => {
         if (validation.duplicatePresent) {
             return res.status(400).json({error: "Job already in Dashboard", jobs: validation.removeDuplicateArr});
         }
-        if (req.body.add) {
-            const label = labeller(updatedJob);
-            updatedJob.label = label;
-            validation.jobToUpdate.label = label;
-        }
         if (hasInterviewDate) {
             const eightHoursMiliseconds = 60 * 60 * 8 * 1000; // frontend time 8 hours ahead
             const reversedEightHoursDate = new Date(new Date(updatedJob.interviewDate) - eightHoursMiliseconds);
@@ -221,7 +214,7 @@ router.put("/", async (req, res) => {
                     return res.status(404).json({error: "User of specified Username not present in Database"});
                 }
                 const cancelSchedule = () => {
-                    scheduler.cancelSchedule(updatedJob.label);
+                    scheduler.cancelSchedule(updatedJob.id);
                 }
                 if (req.body.delete) {
                     cancelSchedule();
@@ -245,7 +238,7 @@ router.put("/", async (req, res) => {
                             emailSubject = `REMINDER: To respond to offer from ${updatedJob.company} for ${updatedJob.role} position`;;
                             emailHTML = `<p>You have 30 seconds left to respond to your offer from ${updatedJob.company} for ${updatedJob.role} position! Be sure to respond by then!</P>`;
                         }
-                        scheduler.schedule(updatedJob.label, futureDate, () => toSchedule(emailSubject, emailHTML));
+                        scheduler.schedule(updatedJob.id, futureDate, () => toSchedule(emailSubject, emailHTML));
                     }
                     if (req.body.add) {
                         schedule();

@@ -3,3 +3,4 @@ client
 .DS_Store
 yarn.lock
 .vscode
+./Config/labeller.js

@@ -5,7 +5,7 @@ const Schema = mongoose.Schema; // Gets the Schema class of Mongoose
 const JobSchema = new Schema ({
     _id: false,
     id: {
-        type: Number,
+        type: String,
         required: true
     },
     company: {

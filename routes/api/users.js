@@ -116,7 +116,7 @@ router.post("/signin", (req, res) => {
                 payload,
                 keys.secretOrKey,
                 {
-                  expiresIn: 31556926 // 1 year in seconds
+                  expiresIn: 300 // 5 minutes in seconds
                 },
                 (err, token) => {
                   res.json({
@@ -149,6 +149,9 @@ router.put("/", async (req, res) => {
     const newPassword = req.body.update.password;
     const updatedJob = req.body.updatedJob;
     const hasInterviewDate = !isEmpty(updatedJob.interviewDate);
+    if (updatedJob.status === "applied" && hasInterviewDate) {
+        return res.status(400).json({error: "Applied status shouldn't have any deadline date"});
+    }
     if (newPassword !== undefined) {
         req.body.update.password = await new Promise((resolve, reject) => { 
             bcrypt.genSalt(10, (err, salt) => {
@@ -212,31 +215,43 @@ router.put("/", async (req, res) => {
             err.isDuplicate = false;
             return res.status(400).json(err);
         } else {
-            if (updatedUser === null) {
-                return res.status(404).json({error: "User of specified Username not present in Database"});
-            }
-            const cancelSchedule = () => {
-                scheduler.cancelSchedule(updatedJob.label);
-            }
-            if (req.body.delete) {
-                cancelSchedule();
-            } else {
-                const oneDayMiliseconds = 60 * 60 * 24 * 1000;
-                const thirtySecondsMiliseconds = 30 * 1000;
-                const futureDate = new Date(new Date(updatedJob.interviewDate) - thirtySecondsMiliseconds);
-                const toSchedule = () => {
-                    const emailSubject = `REMINDER: Interview with ${updatedJob.company} for ${updatedJob.role} position`;
-                    const emailHTML = `<p>Your interview with ${updatedJob.company} for ${updatedJob.role} is happening in 30 seconds! Be sure to prepare for it!</P>`;
-                    sendEmail(updatedUser.email, emailSubject, emailHTML);
+            if (hasInterviewDate) {
+                if (updatedUser === null) {
+                    return res.status(404).json({error: "User of specified Username not present in Database"});
                 }
-                const schedule = () => {
-                    scheduler.schedule(updatedJob.label, futureDate, toSchedule);
+                const cancelSchedule = () => {
+                    scheduler.cancelSchedule(updatedJob.label);
                 }
-                if (req.body.add) {
-                    schedule();
-                } else if (req.body.updated) {
+                if (req.body.delete) {
                     cancelSchedule();
-                    schedule();
+                } else {
+                    const oneDayMiliseconds = 60 * 60 * 24 * 1000;
+                    const thirtySecondsMiliseconds = 30 * 1000;
+                    const futureDate = new Date(new Date(updatedJob.interviewDate) - thirtySecondsMiliseconds);
+                    const toSchedule = (emailSubject, emailHTML) => {
+                        sendEmail(updatedUser.email, emailSubject, emailHTML);
+                    }
+                    const schedule = () => {
+                        let emailSubject = "";
+                        let emailHTML = "";
+                        if (updatedJob.status === "toApply") {
+                            emailSubject = `REMINDER: To apply at ${updatedJob.company} for ${updatedJob.role} position`;
+                            emailHTML = `<p>The application portal at ${updatedJob.company} for ${updatedJob.role} position is closing in 30 seconds! Be sure to apply for it by then!</P>`;
+                        } else if (updatedJob.status === "interview") {
+                            emailSubject = `REMINDER: Interview with ${updatedJob.company} for ${updatedJob.role} position`;
+                            emailHTML = `<p>Your interview with ${updatedJob.company} for ${updatedJob.role} position is happening in 30 seconds! Be sure to prepare for it!</P>`;
+                        } else {
+                            emailSubject = `REMINDER: To respond to offer from ${updatedJob.company} for ${updatedJob.role} position`;;
+                            emailHTML = `<p>You have 30 seconds left to respond to your offer from ${updatedJob.company} for ${updatedJob.role} position! Be sure to respond by then!</P>`;
+                        }
+                        scheduler.schedule(updatedJob.label, futureDate, () => toSchedule(emailSubject, emailHTML));
+                    }
+                    if (req.body.add) {
+                        schedule();
+                    } else if (req.body.updated) {
+                        cancelSchedule();
+                        schedule();
+                    }
                 }
             }
             return res.json(updatedUser);

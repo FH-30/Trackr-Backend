@@ -149,6 +149,7 @@ router.put("/", async (req, res) => {
     const newPassword = req.body.update.password;
     const updatedJob = req.body.updatedJob;
     const hasInterviewDate = !isEmpty(updatedJob.interviewDate);
+    console.log(updatedJob);
     if (updatedJob.status === "applied" && hasInterviewDate) {
         return res.status(400).json({error: "Applied status shouldn't have any deadline date"});
     }
@@ -200,12 +201,12 @@ router.put("/", async (req, res) => {
             updatedJob.label = label;
             validation.jobToUpdate.label = label;
         }
-    }
-    if (hasInterviewDate) {
-        const eightHoursMiliseconds = 60 * 60 * 8 * 1000; // frontend time 8 hours ahead
-        const reversedEightHoursDate = new Date(new Date(updatedJob.interviewDate) - eightHoursMiliseconds);
-        validation.jobToUpdate.interviewDate = reversedEightHoursDate;
-        updatedJob.interviewDate = reversedEightHoursDate;
+        if (hasInterviewDate) {
+            const eightHoursMiliseconds = 60 * 60 * 8 * 1000; // frontend time 8 hours ahead
+            const reversedEightHoursDate = new Date(new Date(updatedJob.interviewDate) - eightHoursMiliseconds);
+            validation.jobToUpdate.interviewDate = reversedEightHoursDate;
+            updatedJob.interviewDate = reversedEightHoursDate;
+        }
     }
     User.findOneAndUpdate({username: req.body.username}, {$set: req.body.update}, {new: true}, (err, updatedUser) => {
         if (err) {

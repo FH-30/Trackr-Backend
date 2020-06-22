@@ -209,18 +209,18 @@ router.put("/", async (req, res) => {
             err.isDuplicate = false;
             return res.status(400).json(err);
         } else {
+            const cancelSchedule = () => {
+                scheduler.cancelSchedule(updatedJob.id);
+            }
             if (hasInterviewDate) {
                 if (updatedUser === null) {
                     return res.status(404).json({error: "User of specified Username not present in Database"});
-                }
-                const cancelSchedule = () => {
-                    scheduler.cancelSchedule(updatedJob.id);
                 }
                 if (req.body.delete) {
                     cancelSchedule();
                 } else {
                     const oneDayMiliseconds = 60 * 60 * 24 * 1000;
-                    const thirtySecondsMiliseconds = 30 * 1000;
+                    const thirtySecondsMiliseconds = 30 * 1000; // for testing purposes
                     const futureDate = new Date(new Date(updatedJob.interviewDate) - thirtySecondsMiliseconds);
                     const toSchedule = (emailSubject, emailHTML) => {
                         sendEmail(updatedUser.email, emailSubject, emailHTML);
@@ -246,6 +246,10 @@ router.put("/", async (req, res) => {
                         cancelSchedule();
                         schedule();
                     }
+                }
+            } else {
+                if (req.body.updated) {
+                    cancelSchedule(); // In the case of an update there might have been a previously scheduled reminder
                 }
             }
             return res.json(updatedUser);

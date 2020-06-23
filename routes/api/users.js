@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const keys = require("../../Config/keys");
 const isEmpty = require("is-empty");
+const Validator = require("validator");
 
 // Functions to validate signin/signup
 const validateSignUpInput = require("../../validation/signup");
@@ -118,6 +119,7 @@ router.post("/signin", (req, res) => {
                   expiresIn: 300 // 5 minutes in seconds
                 },
                 (err, token) => {
+                    user.password = undefined;
                   res.json({
                     user,
                     success: true,
@@ -134,8 +136,16 @@ router.post("/signin", (req, res) => {
     });
 });
 
-router.get("/", (req, res) => {
-    User.findOne(req.body.data).then(user => {
+router.get("/:usernameOrEmail", (req, res) => {
+    const toFind = {};
+    const credential = req.params.usernameOrEmail;
+    const isEmail = Validator.isEmail(credential);
+    if (isEmail) {
+        toFind.email = credential;
+    } else {
+        toFind.username = credential;
+    }
+    User.findOne(toFind).then(user => {
         if (!user) {
             return res.status(404).json({data: "User of specified Data not present in Database"});
         } else {

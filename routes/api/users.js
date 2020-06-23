@@ -10,6 +10,7 @@ const Validator = require("validator");
 // Functions to validate signin/signup
 const validateSignUpInput = require("../../validation/signup");
 const validateSignInInput = require("../../validation/signin");
+const validateJobInput = require("../../validation/job");
 const sendEmail = require("../../Config/email");
 const scheduler = require("../../Config/scheduler");
 
@@ -155,12 +156,15 @@ router.get("/:usernameOrEmail", (req, res) => {
 })
 
 router.put("/", async (req, res) => {
-    const newPassword = req.body.update.password;
     const updatedJob = req.body.updatedJob;
-    const hasInterviewDate = !isEmpty(updatedJob.interviewDate);
-    if (updatedJob.status === "applied" && hasInterviewDate) {
-        return res.status(400).json({error: "Applied status shouldn't have any deadline date"});
+    const {errors, isValid, hasInterviewDate} = validateJobInput(updatedJob);
+
+    if (!isValid) {
+        return res.status(400).json(errors);
     }
+
+    const newPassword = req.body.update.password;
+
     if (newPassword !== undefined) {
         req.body.update.password = await new Promise((resolve, reject) => { 
             bcrypt.genSalt(10, (err, salt) => {

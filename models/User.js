@@ -22,10 +22,6 @@ const JobSchema = new Schema ({
     },
     interviewDate: {
         type: Date
-    },
-    label: {
-        type: String,
-        required: true
     }
 });
 

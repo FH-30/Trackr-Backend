@@ -208,12 +208,6 @@ router.put("/", async (req, res) => {
         if (validation.duplicatePresent) {
             return res.status(400).json({error: "Job already in Dashboard", jobs: validation.removeDuplicateArr});
         }
-        if (hasInterviewDate) {
-            const eightHoursMiliseconds = 60 * 60 * 8 * 1000; // frontend time 8 hours ahead
-            const reversedEightHoursDate = new Date(new Date(updatedJob.interviewDate) - eightHoursMiliseconds);
-            validation.jobToUpdate.interviewDate = reversedEightHoursDate;
-            updatedJob.interviewDate = reversedEightHoursDate;
-        }
     }
     User.findOneAndUpdate({username: req.body.username}, {$set: req.body.update}, {new: true}, (err, updatedUser) => {
         if (err) {

@@ -21,7 +21,7 @@ const JobSchema = new Schema ({
         required: true
     },
     interviewDate: {
-        type: Date
+        type: String
     }
 });
 

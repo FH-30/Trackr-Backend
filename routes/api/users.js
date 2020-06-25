@@ -216,6 +216,8 @@ router.post("/refreshAuthToken", (req, res) => {
                             return res.json({authToken: "Bearer " + token});
                         }
                     )
+                } else {
+                    return res.status(401).json({error: "Refresh Token doesn't match token in database"});
                 }
             })
         }

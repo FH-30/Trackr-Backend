@@ -1,7 +1,9 @@
 const mongoURI = "mongodb://127.0.0.1:27017/orbital-trackr";
-const secretOrKey = "TrackrFracle";
+const authSecret = "FCrlaenmceinst";
+const refreshSecret = "HHoadrisaonytoo";
 
 module.exports = {
     mongoURI,
-    secretOrKey
+    authSecret,
+    refreshSecret
 }

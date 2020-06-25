@@ -48,6 +48,10 @@ const UserSchema = new Schema({
         type: [JobSchema],
         required: true
     },
+    refreshToken: {
+        type: String,
+        required: true
+    },
     date: {
         type: Date,
         default: new Date()

@@ -61,30 +61,49 @@ router.post("/signup", (req, res) => {
                             }
                             newUser.password = hash;
                             newUser.jobs = [];
-                            newUser
-                                .save()
-                                .then(user => {           
-                                    const payload = {
-                                        id: user.id,
-                                        username: user.username
-                                    }
+
+                            const payload = {
+                                username:newUser.username
+                            }
+
+                            jwt.sign(
+                                payload,
+                                keys.refreshSecret,
+                                {
+                                    expiresIn: 10800 // 3 hours in seconds
+                                },
+                                (err, token) => {
+                                    const refreshToken = "Bearer " + token;
+                                    newUser.refreshToken = refreshToken;
+
+                                    newUser
+                                        .save()
+                                        .then(user => {
+                                            const payload = {
+                                                id: user.id,
+                                                username: user.username
+                                            }
                                 
-                                    jwt.sign(
-                                        payload,
-                                        keys.secretOrKey,
-                                        {
-                                            expiresIn: 900 // 15 minutes in seconds
-                                        },
-                                        (err, token) => {
-                                            res.json({
-                                                user: {username: user.username, email: user.email},
-                                                success: true,
-                                                token: "Bearer " + token
-                                            });
+                                            jwt.sign(
+                                                payload,
+                                                keys.authSecret,
+                                                {
+                                                    expiresIn: 900 // 15 minutes in seconds
+                                                },
+                                                (err, token) => {
+                                                    res.json({
+                                                        user: {username: user.username, email: user.email},
+                                                        success: true,
+                                                        authToken: "Bearer " + token,
+                                                        refreshToken: refreshToken
+                                                    });
+                                                }
+                                            );
                                         }
-                                    );
-                                })
-                                .catch(err => console.log(err));
+                                    )
+                                    .catch(err => console.log(err));
+                                }
+                            )
                         });
                     });
                 }
@@ -129,38 +148,84 @@ router.post("/signin", (req, res) => {
 
         bcrypt.compare(password, user.password).then(isMatch => {
             if (isMatch) {
-              const payload = {
-                id: user.id,
-                username: user.username
-              }
-            
-            jwt.sign(
-                payload,
-                keys.secretOrKey,
-                {
-                  expiresIn: 900 // 15 minutes in seconds
-                },
-                (err, token) => {
-                  res.json({
-                    user: {username: user.username},
-                    success: true,
-                    token: "Bearer " + token
-                  });
+                const payload = {
+                    id: user.id,
+                    username: user.username
                 }
-              );
+            
+                jwt.sign(
+                    payload,
+                    keys.refreshSecret,
+                    {
+                        expiresIn: 10800 // 3 hours in seconds
+                    },
+                    (err, token) => {
+                        const refreshToken = "Bearer " + token;
+
+                        User.findOneAndUpdate({username: user.username}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
+                            jwt.sign(
+                                payload,
+                                keys.authSecret,
+                                {
+                                    expiresIn: 900 // 15 minutes in seconds
+                                },
+                                (err, token) => {
+                                    res.json({
+                                        user: {username: updatedUser.username},
+                                        success: true,
+                                        authToken: "Bearer " + token,
+                                        refreshToken: refreshToken 
+                                    });
+                                }
+                            );
+                        });
+                    }
+                )
             } else {
-              return res
-                .status(400)
-                .json({ passwordincorrect: "Password incorrect" });
+                return res
+                        .status(400)
+                        .json({ passwordincorrect: "Password incorrect" });
             }
         });
     });
 });
 
+router.post("/refreshAuthToken", (req, res) => {
+    const token = getJWT(req.headers);
+    jwt.verify(token,
+        keys.refreshSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+            User.findOne({username: data.username}).then(user => {
+                const valid = user.refreshToken === "Bearer " + token;
+                if (valid) {
+                    const payload = {
+                        id: user.id,
+                        username: user.username
+                    }
+
+                    jwt.sign(
+                        payload,
+                        keys.authSecret,
+                        {
+                            expiresIn: 900 // 15 miutes in seconds
+                        },
+                        (err, token) => {
+                            return res.json({authToken: "Bearer " + token});
+                        }
+                    )
+                }
+            })
+        }
+    );
+})
+
 router.get("/", (req, res) => {
     const token = getJWT(req.headers);
     jwt.verify(token, 
-        keys.secretOrKey,
+        keys.authSecret,
         (err, data) => {
             if (err) {
                 return res.status(401).json(err);
@@ -169,6 +234,7 @@ router.get("/", (req, res) => {
                 if (!user) {
                     return res.status(404).json({data: "User of specified Data not present in Database"});
                 } else {
+                    user.refreshToken = undefined;
                     return res.json(user);
                 }
             })
@@ -179,7 +245,7 @@ router.get("/", (req, res) => {
 router.put("/", (req, res) => {
     const token = getJWT(req.headers);
     jwt.verify(token, 
-        keys.secretOrKey,
+        keys.authSecret,
         async (err, data) => {
             if (err) {
                 return res.status(401).json(err);
@@ -288,6 +354,7 @@ router.put("/", (req, res) => {
                             cancelSchedule(); // In the case of an update there might have been a previously scheduled reminder
                         }
                     }
+                    updatedUser.refreshToken = undefined;
                     return res.json(updatedUser);
                 }
             });

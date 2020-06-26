@@ -162,11 +162,14 @@ router.post("/signin", (req, res) => {
 
         bcrypt.compare(password, user.password).then(isMatch => {
             if (isMatch) {
+                if (!user.verified) {
+                    return res.status(401).json({error: "Email is not verified"});
+                }
                 const payload = {
                     id: user.id,
                     username: user.username
                 }
-            
+
                 jwt.sign(
                     payload,
                     keys.refreshSecret,

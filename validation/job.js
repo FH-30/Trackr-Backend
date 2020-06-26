@@ -15,17 +15,14 @@ module.exports = (data) => {
     data.status = isEmpty(data.status) ? "" : data.status;
     data.interviewDate = isEmpty(data.interviewDate) ? "" : data.interviewDate;
 
-    // Username checks
     if (Validator.isEmpty(data.id)) {
         errors.id = "ID field is required";
     }
 
-    // Password checks
     if (Validator.isEmpty(data.company)) {
         errors.company = "Company field is required";
     }
 
-    // Email checks
     if (Validator.isEmpty(data.role)) {
         errors.role = "Role field is required";
     }
@@ -35,11 +32,6 @@ module.exports = (data) => {
     } else if (data.status !== "toApply" && data.status !== "applied" 
                 && data.status !== "interview" && data.status !== "offer") {
         errors.status = "Status field invalid (Contact our support team if you see this)";
-    }
-
-    if (!Validator.isEmpty(data.interviewDate) && data.status === "applied") {
-        errors.interviewDate = "No date should be assigned to a job of status " +
-                            "Applied (Contact our support team if you see this)";
     }
 
     if (Validator.isEmpty(data.interviewDate)) {

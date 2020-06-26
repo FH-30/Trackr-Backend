@@ -11,6 +11,7 @@ const Validator = require("validator");
 const validateSignUpInput = require("../../validation/signup");
 const validateSignInInput = require("../../validation/signin");
 const validateJobInput = require("../../validation/job");
+const validateCredentialInput = require("../../validation/credential");
 const sendEmail = require("../../Config/email");
 const scheduler = require("../../Config/scheduler");
 const getJWT = require("../../verification/getJWT");
@@ -63,7 +64,7 @@ router.post("/signup", (req, res) => {
                             newUser.jobs = [];
 
                             const payload = {
-                                username:newUser.username
+                                username: newUser.username
                             }
 
                             jwt.sign(
@@ -244,45 +245,30 @@ router.get("/", (req, res) => {
     );
 })
 
-router.put("/", (req, res) => {
+router.put("/jobs", (req, res) => {
     const token = getJWT(req.headers);
     jwt.verify(token, 
         keys.authSecret,
-        async (err, data) => {
+        (err, data) => {
             if (err) {
                 return res.status(401).json(err);
             }
             const updatedJob = req.body.updatedJob;
+
             const {errors, isValid, hasInterviewDate} = validateJobInput(updatedJob);
         
             if (!isValid) {
                 return res.status(400).json(errors);
             }
-        
-            const newPassword = req.body.update.password;
-        
-            if (newPassword !== undefined) {
-                req.body.update.password = await new Promise((resolve, reject) => { 
-                    bcrypt.genSalt(10, (err, salt) => {
-                        bcrypt.hash(newPassword, salt, (err, hash) => {
-                            if (err) {
-                                reject(err);
-                            }
-                            resolve(hash); 
-                        });
-                    });
-                });
-            }
-            const checkDuplicateAndGetJobToUpdate = () => {
+
+            const checkDuplicate = () => {
                 let first = true;
                 const toReturn = {};
-                toReturn.jobToUpdate = null;
                 toReturn.duplicatePresent = false;
-                req.body.update.jobs.map(job => {
+                req.body.jobs.map(job => {
                     if (updatedJob.company === job.company && updatedJob.role === job.role) {
                         if (first) {
                             first = false;
-                            toReturn.jobToUpdate = job;
                         } else {
                             toReturn.duplicatePresent = true;
                             let first = true;
@@ -299,27 +285,23 @@ router.put("/", (req, res) => {
                 });
                 return toReturn;
             }
-            const validation = checkDuplicateAndGetJobToUpdate();
+            const validation = checkDuplicate();
             if (req.body.add || req.body.updated) {
                 if (validation.duplicatePresent) {
                     return res.status(400).json({error: "Job already in Dashboard", jobs: validation.removeDuplicateArr});
                 }
             }
-            User.findOneAndUpdate({username: data.username}, {$set: req.body.update}, {new: true}, (err, updatedUser) => {
+            User.findOneAndUpdate({username: data.username}, {$set: {jobs: req.body.jobs}}, {new: true}, (err, updatedUser) => {
                 if (err) {
-                    if (err.codeName === "DuplicateKey") {
-                        return res.status(400).json({error: "Another User already has the Field passed in", isDuplicate: true})
-                    }
-                    err.isDuplicate = false;
                     return res.status(400).json(err);
                 } else {
+                    if (updatedUser === null) {
+                        return res.status(404).json({error: "User of specified Username not present in Database"});
+                    }
                     const cancelSchedule = () => {
                         scheduler.cancelSchedule(updatedJob.id);
                     }
                     if (hasInterviewDate) {
-                        if (updatedUser === null) {
-                            return res.status(404).json({error: "User of specified Username not present in Database"});
-                        }
                         if (req.body.delete) {
                             cancelSchedule();
                         } else {
@@ -363,5 +345,104 @@ router.put("/", (req, res) => {
         }
     );
 });
+
+router.put("/:field", (req, res) => {
+    const field = req.params.field;
+
+    if (field !== "username" && field !== "email" && field !== "password") {
+        return res.status(404).json({error: "Page Not Found"});
+    }
+
+    const token = getJWT(req.headers);
+    jwt.verify(token, 
+        keys.authSecret,
+        async (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+            
+            const {errors, isValid} = validateCredentialInput(req.body, field);
+
+            if (!isValid) {
+                return res.status(400).json(errors);
+            }
+        
+            if (field === "password") {
+                req.body.password = await new Promise((resolve, reject) => { 
+                    bcrypt.genSalt(10, (err, salt) => {
+                        bcrypt.hash(req.body.password, salt, (err, hash) => {
+                            if (err) {
+                                reject(err);
+                            }
+                            resolve(hash); 
+                        });
+                    });
+                });
+            }
+
+            let toSet;
+
+            if (field === "username") {
+                toSet = {username: req.body.username};
+            } else if (field === "email") {
+                toSet = {email: req.body.email};
+            } else {
+                toSet = {password: req.body.password};
+            }
+
+            User.findOneAndUpdate({username: data.username}, {$set: toSet}, {new: true}, (err, updatedUser) => {
+                if (err) {
+                    if (err.codeName === "DuplicateKey") {
+                        return res.status(400).json({error: `That ${field} is already taken`, isDuplicate: true})
+                    }
+                    err.isDuplicate = false;
+                    return res.status(400).json(err);
+                }
+                
+                if (updatedUser === null) {
+                    return res.status(404).json({error: "User of specified Username not present in Database"});
+                }
+
+                if (field === "username") {
+                    const payload = {
+                        id: updatedUser.id,
+                        username: updatedUser.username
+                    }
+                    jwt.sign(
+                        payload,
+                        keys.refreshSecret,
+                        {
+                            expiresIn: 10800 // 3 hours in seconds
+                        },
+                        (err, token) => {
+                            const refreshToken = "Bearer " + token;
+    
+                            User.findOneAndUpdate({username: updatedUser.username}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
+                                jwt.sign(
+                                    payload,
+                                    keys.authSecret,
+                                    {
+                                        expiresIn: 900 // 15 minutes in seconds
+                                    },
+                                    (err, token) => {
+                                        res.json({
+                                            user: {username: updatedUser.username},
+                                            success: true,
+                                            authToken: "Bearer " + token,
+                                            refreshToken: refreshToken 
+                                        });
+                                    }
+                                );
+                            });
+                        }
+                    )
+                } else {
+                    updatedUser.refreshToken = undefined;
+                    return res.json(updatedUser);
+                }
+            })
+        }
+    );
+})
 
 module.exports = router;

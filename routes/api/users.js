@@ -98,6 +98,19 @@ router.post("/signup", (req, res) => {
                                                         authToken: "Bearer " + token,
                                                         refreshToken: refreshToken
                                                     });
+                                                    jwt.sign(
+                                                        payload,
+                                                        keys.emailSecret,
+                                                        {
+                                                            expiresIn: 900 // 15 minutes in seconds
+                                                        },
+                                                        (err, token) => {
+                                                            const emailSubject = `Verify Your Email: Link expires in 15 minutes`;
+                                                            const emailHTML = `<p>Click on the link below to verify your email:
+                                                                                http://localhost:5000/api/users/emailVerification/${token}</p>`;
+                                                            sendEmail(user.email, emailSubject, emailHTML);
+                                                        }
+                                                    )
                                                 }
                                             );
                                         }
@@ -223,7 +236,7 @@ router.post("/refreshAuthToken", (req, res) => {
             })
         }
     );
-})
+});
 
 router.get("/", (req, res) => {
     const token = getJWT(req.headers);
@@ -243,6 +256,61 @@ router.get("/", (req, res) => {
             })
         }
     );
+});
+
+router.get("/emailVerification/:token", (req, res) => {
+    const token = req.params.token;
+    
+    jwt.verify(
+        token,
+        keys.emailSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(400).json(err);
+            }
+            User.findOneAndUpdate({username: data.username}, {$set: {verified: true}}, {new: true}, (err, updatedUser) => {
+                if (updatedUser === null) {
+                    return res.status(404).json({error: "User of specified Username not present in Database"});
+                }
+                res.redirect("http://localhost:3000/login");
+            });
+        }
+    )
+});
+
+router.get("/sendVerificationEmail", (req, res) => {
+    const token = getJWT(req.headers);
+
+    jwt.verify(
+        token,
+        keys.authSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+
+            const payload = {
+                id: data.id,
+                username: data.username
+            }
+            jwt.sign(
+                payload,
+                keys.emailSecret,
+                {
+                    expiresIn: 900 // 15 minutes in seconds
+                },
+                (err, token) => {
+                    const emailSubject = `Verify Your Email: Link expires in 15 minutes`;
+                    const emailHTML = `<p>Click on the link below to verify your email:
+                                        http://localhost:5000/api/users/emailVerification/${token}</p>`;
+                    User.findOne({username: data.username}).then(user => {
+                        sendEmail(user.email, emailSubject, emailHTML);
+                        return res.json({});
+                    });
+                }
+            );
+        }
+    )
 })
 
 router.put("/jobs", (req, res) => {
@@ -429,7 +497,7 @@ router.put("/:field", (req, res) => {
                                             user: {username: updatedUser.username},
                                             success: true,
                                             authToken: "Bearer " + token,
-                                            refreshToken: refreshToken 
+                                            refreshToken: refreshToken
                                         });
                                     }
                                 );
@@ -443,6 +511,6 @@ router.put("/:field", (req, res) => {
             })
         }
     );
-})
+});
 
 module.exports = router;

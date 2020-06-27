@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const keys = require("../../Config/keys");
+const keys = require("../../config/keys");
 const isEmpty = require("is-empty");
 const Validator = require("validator");
 
@@ -12,8 +12,8 @@ const validateSignUpInput = require("../../validation/signup");
 const validateSignInInput = require("../../validation/signin");
 const validateJobInput = require("../../validation/job");
 const validateCredentialInput = require("../../validation/credential");
-const sendEmail = require("../../Config/email");
-const scheduler = require("../../Config/scheduler");
+const sendEmail = require("../../config/email");
+const scheduler = require("../../config/scheduler");
 const getJWT = require("../../verification/getJWT");
 
 // Load User model (Using Schema made in another file)

@@ -378,7 +378,7 @@ router.put("/jobs", (req, res) => {
                         } else {
                             const oneDayMiliseconds = 60 * 60 * 24 * 1000;
                             const thirtySecondsMiliseconds = 30 * 1000; // for testing purposes
-                            const futureDate = new Date(new Date(updatedJob.interviewDate) - thirtySecondsMiliseconds);
+                            const futureDate = new Date(new Date(updatedJob.interviewDate) - oneDayMiliseconds);
                             const toSchedule = (emailSubject, emailHTML) => {
                                 sendEmail(updatedUser.email, emailSubject, emailHTML);
                             }
@@ -387,13 +387,13 @@ router.put("/jobs", (req, res) => {
                                 let emailHTML = "";
                                 if (updatedJob.status === "toApply") {
                                     emailSubject = `REMINDER: To apply at ${updatedJob.company} for ${updatedJob.role} position`;
-                                    emailHTML = `<p>The application portal at ${updatedJob.company} for ${updatedJob.role} position is closing in 30 seconds! Be sure to apply for it by then!</P>`;
+                                    emailHTML = `<p>The application portal at ${updatedJob.company} for ${updatedJob.role} position is closing in 24 hours! Be sure to apply for it by then!</P>`;
                                 } else if (updatedJob.status === "interview") {
                                     emailSubject = `REMINDER: Interview with ${updatedJob.company} for ${updatedJob.role} position`;
-                                    emailHTML = `<p>Your interview with ${updatedJob.company} for ${updatedJob.role} position is happening in 30 seconds! Be sure to prepare for it!</P>`;
+                                    emailHTML = `<p>Your interview with ${updatedJob.company} for ${updatedJob.role} position is happening in 24 hours! Be sure to prepare for it!</P>`;
                                 } else {
                                     emailSubject = `REMINDER: To respond to offer from ${updatedJob.company} for ${updatedJob.role} position`;;
-                                    emailHTML = `<p>You have 30 seconds left to respond to your offer from ${updatedJob.company} for ${updatedJob.role} position! Be sure to respond by then!</P>`;
+                                    emailHTML = `<p>You have 24 hours left to respond to your offer from ${updatedJob.company} for ${updatedJob.role} position! Be sure to respond by then!</P>`;
                                 }
                                 scheduler.schedule(updatedJob.id, futureDate, () => toSchedule(emailSubject, emailHTML));
                             }

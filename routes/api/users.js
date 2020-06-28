@@ -364,8 +364,6 @@ router.put("/jobs", (req, res) => {
                 }
                 // if (hasInterviewDate) {
                 //     updatedJob.interviewDate = new Date(updatedJob.interviewDate) - (8 * 60 * 60 * 1000); // heroku time 8 hours ahead
-                //     console.log(updatedJob.interviewDate);
-                //     validation.jobToUpdate.interviewDate = updatedJob.interviewDate;
                 // }
             }
             User.findOneAndUpdate({username: data.username}, {$set: {jobs: req.body.jobs}}, {new: true}, (err, updatedUser) => {

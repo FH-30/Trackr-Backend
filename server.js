@@ -11,9 +11,6 @@ const cors = require("cors");
 
 app.use(cors());
 
-// Routes
-app.use("/api/users", users);
-
 // Allows body-parsing of JSON files
 app.use(express.json());
 app.use(express.urlencoded({
@@ -27,10 +24,6 @@ if (process.env.NODE_ENV === "production") {
         res.header("Access-Control-Allow-Origin", "https://orbital-trackr.herokuapp.com"); // update to match the domain you will make the request from
         res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
         next();
-    });
-
-    app.get("*", (req, res) => {
-        res.sendFile(path.join(__dirname, '/client/build/index.html'));
     });
 }
 
@@ -47,6 +40,13 @@ app.use(passport.initialize());
 
 // Passport config
 require("./config/passport")(passport);
+
+// Routes
+app.use("/api/users", users);
+
+// app.get("*", (req, res) => {
+//     res.sendFile(path.join(__dirname, '/client/build/index.html'));
+// });
 
 // Uses process.env.PORT if available otherwise 5000
 const port = process.env.PORT || 5000;

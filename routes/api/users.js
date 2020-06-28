@@ -340,6 +340,7 @@ router.put("/jobs", (req, res) => {
                     if (updatedJob.company === job.company && updatedJob.role === job.role) {
                         if (first) {
                             first = false;
+                            // toReturn.jobToUpdate = job;
                         } else {
                             toReturn.duplicatePresent = true;
                             let first = true;
@@ -361,6 +362,11 @@ router.put("/jobs", (req, res) => {
                 if (validation.duplicatePresent) {
                     return res.status(400).json({error: "Job already in Dashboard", jobs: validation.removeDuplicateArr});
                 }
+                // if (hasInterviewDate) {
+                //     updatedJob.interviewDate = new Date(updatedJob.interviewDate) - (8 * 60 * 60 * 1000); // heroku time 8 hours ahead
+                //     console.log(updatedJob.interviewDate);
+                //     validation.jobToUpdate.interviewDate = updatedJob.interviewDate;
+                // }
             }
             User.findOneAndUpdate({username: data.username}, {$set: {jobs: req.body.jobs}}, {new: true}, (err, updatedUser) => {
                 if (err) {

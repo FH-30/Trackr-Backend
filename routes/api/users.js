@@ -376,7 +376,7 @@ router.put("/jobs", (req, res) => {
                     const cancelSchedule = () => {
                         scheduler.cancelSchedule(updatedJob.id);
                     }
-                    if (hasInterviewDate) {
+                    if (hasInterviewDate && updatedJob.status !== "applied") {
                         if (req.body.delete) {
                             cancelSchedule();
                         } else {

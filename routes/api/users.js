@@ -62,6 +62,7 @@ router.post("/signup", (req, res) => {
                             }
                             newUser.password = hash;
                             newUser.jobs = [];
+                            newUser.date = new Date();
 
                             const payload = {
                                 username: newUser.username
@@ -261,6 +262,53 @@ router.get("/", (req, res) => {
     );
 });
 
+router.get("/weeklyJobs", (req, res) => {
+    const token = getJWT(req.headers);
+
+    jwt.verify(
+        token,
+        keys.authSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+            User.findOne({username: data.username}).then(user => {
+                if (!user) {
+                    return res.status(404).json({data: "User of specified Data not present in Database"});
+                } else {
+                    const jobs = user.jobs;
+
+                    if (user.jobsSorted) {
+                        return res.json({jobs});
+                    }
+
+                    console.log("Sorting...");
+
+                    const comparator = (job1, job2) => {
+                        const date1 = new Date(job1.interviewDate);
+                        const date2 = new Date(job2.interviewDate);
+
+                        if (date1 < date2) {
+                            return -1;
+                        } else {
+                            return 1;
+                        }
+                    }
+
+                    QuickSort.sort(jobs, comparator);
+
+                    User.findOneAndUpdate({username: user.username}, {$set: {jobs, jobsSorted: true}}, {new: true}, (err, updatedUser) => {
+                        if (err) {
+                            return res.status(400).json(err);
+                        }
+                        return res.json({jobs: updatedUser.jobs});
+                    })
+                }
+            })
+        }
+    )
+});
+
 router.get("/emailVerification/:token", (req, res) => {
     const token = req.params.token;
     
@@ -340,7 +388,6 @@ router.put("/jobs", (req, res) => {
                     if (updatedJob.company === job.company && updatedJob.role === job.role) {
                         if (first) {
                             first = false;
-                            // toReturn.jobToUpdate = job;
                         } else {
                             toReturn.duplicatePresent = true;
                             let first = true;
@@ -362,11 +409,15 @@ router.put("/jobs", (req, res) => {
                 if (validation.duplicatePresent) {
                     return res.status(400).json({error: "Job already in Dashboard", jobs: validation.removeDuplicateArr});
                 }
-                // if (hasInterviewDate) {
-                //     updatedJob.interviewDate = new Date(updatedJob.interviewDate) - (8 * 60 * 60 * 1000); // heroku time 8 hours ahead
-                // }
             }
-            User.findOneAndUpdate({username: data.username}, {$set: {jobs: req.body.jobs}}, {new: true}, (err, updatedUser) => {
+
+            const toSet = {jobs: req.body.jobs};
+
+            if (req.body.add || req.body.updated) {
+                toSet.jobsSorted = false;
+            }
+
+            User.findOneAndUpdate({username: data.username}, {$set: toSet}, {new: true}, (err, updatedUser) => {
                 if (err) {
                     return res.status(400).json(err);
                 } else {
@@ -460,7 +511,7 @@ router.put("/:field", (req, res) => {
             if (field === "username") {
                 toSet = {username: req.body.username};
             } else if (field === "email") {
-                toSet = {email: req.body.email};
+                toSet = {email: req.body.email, verified: false};
             } else {
                 toSet = {password: req.body.password};
             }

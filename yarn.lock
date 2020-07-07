@@ -670,6 +670,11 @@ has-yarn@^2.1.0:
   resolved "https://registry.yarnpkg.com/has-yarn/-/has-yarn-2.1.0.tgz#137e11354a7b5bf11aa5cb649cf0c6f3ff2b2e77"
   integrity sha512-UqBRqi4ju7T+TqGNdqAO0PaSVGsDGJUBQvk9eUWNGRY1CFGDzYhLWoM7JQEemnlvVcv/YEmc2wNW8BC24EnUsw==
 
+hashmap@^2.4.0:
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/hashmap/-/hashmap-2.4.0.tgz#4bcfe01fbbd2713db9d9254ce936b838412af884"
+  integrity sha512-Ngj48lhnxJdnBAEVbubKBJuN1elfVLZJs94ZixRi98X3GCU4v6pgj9qRkHt6H8WaVJ69Wv0r1GhtS7hvF9zCgg==
+
 hosted-git-info@^2.1.4:
   version "2.8.8"
   resolved "https://registry.yarnpkg.com/hosted-git-info/-/hosted-git-info-2.8.8.tgz#7539bd4bc1e0e0a895815a2e0262420b12858488"
@@ -839,6 +844,11 @@ isarray@~1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/isarray/-/isarray-1.0.0.tgz#bb935d48582cba168c06834957a54a3e07124f11"
   integrity sha1-u5NdSFgsuhaMBoNJV6VKPgcSTxE=
+
+js-priority-queue@^0.1.5:
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/js-priority-queue/-/js-priority-queue-0.1.5.tgz#f71e9b2120c91e8a1ddab3b7d347dac01d81e837"
+  integrity sha1-9x6bISDJHood2rO300fawB2B6Dc=
 
 json-buffer@3.0.0:
   version "3.0.0"
@@ -1203,6 +1213,11 @@ once@^1.3.1, once@^1.4.0:
   dependencies:
     wrappy "1"
 
+optimized-quicksort@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/optimized-quicksort/-/optimized-quicksort-1.1.1.tgz#48dc24b96a0abfe0dcd33486204195845e423bf7"
+  integrity sha512-e//2sfoy8i/OGL86apW9br9xvaregFCJr0DZM/4TCVN11AL9K6TZMIPejEFW1/hJ8S8CkuyEr0Y6xm3deSIaWA==
+
 p-cancelable@^1.0.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/p-cancelable/-/p-cancelable-1.1.0.tgz#d078d15a3af409220c886f1d9a0ca2e441ab26cc"
@@ -1310,6 +1325,11 @@ prepend-http@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/prepend-http/-/prepend-http-2.0.0.tgz#e92434bfa5ea8c19f41cdfd401d741a3c819d897"
   integrity sha1-6SQ0v6XqjBn0HN/UAddBo8gZ2Jc=
+
+priorityqueue@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/priorityqueue/-/priorityqueue-1.0.0.tgz#0585b7a441ff2b11a71bb8cd23a0b6f6504fb30c"
+  integrity sha512-ybkWMIQpEJZ9EIF9yvDZrhc+eqsIA8LQVZ9UybLyT7X5nL9vEgNLZ5Dt/e0EtqEnak8mVsmnjEX1B1TO2M1kyQ==
 
 process-nextick-args@~2.0.0:
   version "2.0.1"

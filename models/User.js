@@ -54,11 +54,17 @@ const UserSchema = new Schema({
     },
     verified: {
         type: Boolean,
-        default: false
+        default: false,
+        required: true
+    },
+    jobsSorted: {
+        type: Boolean,
+        default: false,
+        required: true
     },
     date: {
         type: Date,
-        default: new Date()
+        required: true
     }
 });
 

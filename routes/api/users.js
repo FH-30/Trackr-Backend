@@ -6,6 +6,8 @@ const jwt = require("jsonwebtoken");
 const keys = require("../../config/keys");
 const isEmpty = require("is-empty");
 const Validator = require("validator");
+const QuickSort = require("optimized-quicksort");
+const moment = require("moment");
 
 // Functions to validate signin/signup
 const validateSignUpInput = require("../../validation/signup");
@@ -278,11 +280,26 @@ router.get("/weeklyJobs", (req, res) => {
                 } else {
                     const jobs = user.jobs;
 
-                    if (user.jobsSorted) {
-                        return res.json({jobs});
+                    const getWeeklyJobs = (allJobs) => {
+                        const startOfWeek = moment().startOf('isoweek').toDate();  
+                        const endOfWeek   = moment().endOf('isoweek').toDate();
+                        console.log(startOfWeek);
+                        console.log(endOfWeek);
+
+                        return allJobs.filter(job => {
+                            console.log(job.interviewDate);
+                            console.log(new Date(job.interviewDate));
+                            if (new Date(job.interviewDate) >= startOfWeek && new Date(job.interviewDate) <= endOfWeek) {
+                                return true;
+                            }
+                            return false;
+                        });
                     }
 
-                    console.log("Sorting...");
+                    if (user.jobsSorted) {
+                        const filteredJobs = getWeeklyJobs(jobs);
+                        return res.json({jobs: filteredJobs});
+                    }
 
                     const comparator = (job1, job2) => {
                         const date1 = new Date(job1.interviewDate);
@@ -301,7 +318,8 @@ router.get("/weeklyJobs", (req, res) => {
                         if (err) {
                             return res.status(400).json(err);
                         }
-                        return res.json({jobs: updatedUser.jobs});
+                        const filteredJobs = getWeeklyJobs(updatedUser.jobs);
+                        return res.json({jobs: filteredJobs});
                     })
                 }
             })

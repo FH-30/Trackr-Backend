@@ -64,63 +64,57 @@ router.post("/signup", (req, res) => {
                             }
                             newUser.password = hash;
                             newUser.jobs = [];
-                            newUser.date = new Date();
 
-                            const payload = {
-                                username: newUser.username
-                            }
+                            newUser
+                                .save()
+                                .then(user => {
+                                    const payload = {
+                                        id: user.id,
+                                        username: user.username
+                                    };
 
-                            jwt.sign(
-                                payload,
-                                keys.refreshSecret,
-                                {
-                                    expiresIn: 10800 // 3 hours in seconds
-                                },
-                                (err, token) => {
-                                    const refreshToken = "Bearer " + token;
-                                    newUser.refreshToken = refreshToken;
+                                    jwt.sign(
+                                        payload,
+                                        keys.refreshSecret,
+                                        {
+                                            expiresIn: 10800 // 3 hours in seconds
+                                        },
+                                        (err , token) => {
+                                            const refreshToken = "Bearer " + token;
 
-                                    newUser
-                                        .save()
-                                        .then(user => {
-                                            const payload = {
-                                                id: user.id,
-                                                username: user.username
-                                            }
-                                
-                                            jwt.sign(
-                                                payload,
-                                                keys.authSecret,
-                                                {
-                                                    expiresIn: 900 // 15 minutes in seconds
-                                                },
-                                                (err, token) => {
-                                                    res.json({
-                                                        user: {username: user.username, email: user.email},
-                                                        success: true,
-                                                        authToken: "Bearer " + token,
-                                                        refreshToken: refreshToken
-                                                    });
-                                                    jwt.sign(
-                                                        payload,
-                                                        keys.emailSecret,
-                                                        {
-                                                            expiresIn: 900 // 15 minutes in seconds
-                                                        },
-                                                        (err, token) => {
-                                                            const emailSubject = `Verify Your Email: Link expires in 15 minutes`;
-                                                            const emailHTML = `<p>Click on the link below to verify your email:
-                                                                                http://localhost:5000/api/users/emailVerification/${token}</p>`;
-                                                            sendEmail(user.email, emailSubject, emailHTML);
-                                                        }
-                                                    )
-                                                }
-                                            );
+                                            User.findOneAndUpdate({username: user.username}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
+                                                jwt.sign(
+                                                    payload,
+                                                    keys.authSecret,
+                                                    {
+                                                        expiresIn: 900 // 15 minutes in seconds
+                                                    },
+                                                    (err , token) => {
+                                                        res.json({
+                                                            user: {username: user.username, email: user.email},
+                                                            success: true,
+                                                            authToken: "Bearer " + token,
+                                                            refreshToken
+                                                        });
+                                                        jwt.sign(
+                                                            payload,
+                                                            keys.emailSecret,
+                                                            {
+                                                                expiresIn: 900 // 15 minutes in seconds
+                                                            },
+                                                            (err, token) => {
+                                                                const emailSubject = `Verify Your Email: Link expires in 15 minutes`;
+                                                                const emailHTML = `<p>Click on the link below to verify your email:
+                                                                                    http://localhost:5000/api/users/emailVerification/${token}</p>`;
+                                                                sendEmail(user.email, emailSubject, emailHTML);
+                                                            }
+                                                        )
+                                                    }
+                                                )
+                                            });
                                         }
-                                    )
-                                    .catch(err => console.log(err));
-                                }
-                            )
+                                    );
+                                });
                         });
                     });
                 }
@@ -218,7 +212,7 @@ router.post("/refreshAuthToken", (req, res) => {
             if (err) {
                 return res.status(401).json(err);
             }
-            User.findOne({username: data.username}).then(user => {
+            User.findOne({_id: data.id}).then(user => {
                 const valid = user.refreshToken === "Bearer " + token;
                 if (valid) {
                     const payload = {
@@ -252,7 +246,7 @@ router.get("/", (req, res) => {
             if (err) {
                 return res.status(401).json(err);
             }
-            User.findOne({username: data.username}).then(user => {
+            User.findOne({_id: data.id}).then(user => {
                 if (!user) {
                     return res.status(404).json({data: "User of specified Data not present in Database"});
                 } else {
@@ -274,7 +268,7 @@ router.get("/weeklyJobs", (req, res) => {
             if (err) {
                 return res.status(401).json(err);
             }
-            User.findOne({username: data.username}).then(user => {
+            User.findOne({_id: data.id}).then(user => {
                 if (!user) {
                     return res.status(404).json({data: "User of specified Data not present in Database"});
                 } else {
@@ -314,7 +308,7 @@ router.get("/weeklyJobs", (req, res) => {
 
                     QuickSort.sort(jobs, comparator);
 
-                    User.findOneAndUpdate({username: user.username}, {$set: {jobs, jobsSorted: true}}, {new: true}, (err, updatedUser) => {
+                    User.findOneAndUpdate({_id: data.id}, {$set: {jobs, jobsSorted: true}}, {new: true}, (err, updatedUser) => {
                         if (err) {
                             return res.status(400).json(err);
                         }
@@ -337,7 +331,7 @@ router.get("/emailVerification/:token", (req, res) => {
             if (err) {
                 return res.status(400).json(err);
             }
-            User.findOneAndUpdate({username: data.username}, {$set: {verified: true}}, {new: true}, (err, updatedUser) => {
+            User.findOneAndUpdate({_id: data.id}, {$set: {verified: true}}, {new: true}, (err, updatedUser) => {
                 if (updatedUser === null) {
                     return res.status(404).json({error: "User of specified Username not present in Database"});
                 }
@@ -372,7 +366,7 @@ router.get("/sendVerificationEmail", (req, res) => {
                     const emailSubject = `Verify Your Email: Link expires in 15 minutes`;
                     const emailHTML = `<p>Click on the link below to verify your email:
                                         http://localhost:5000/api/users/emailVerification/${token}</p>`;
-                    User.findOne({username: data.username}).then(user => {
+                    User.findOne({_id: data.id}).then(user => {
                         sendEmail(user.email, emailSubject, emailHTML);
                         return res.json({});
                     });
@@ -435,7 +429,7 @@ router.put("/jobs", (req, res) => {
                 toSet.jobsSorted = false;
             }
 
-            User.findOneAndUpdate({username: data.username}, {$set: toSet}, {new: true}, (err, updatedUser) => {
+            User.findOneAndUpdate({_id: data.id}, {$set: toSet}, {new: true}, (err, updatedUser) => {
                 if (err) {
                     return res.status(400).json(err);
                 } else {
@@ -534,7 +528,7 @@ router.put("/:field", (req, res) => {
                 toSet = {password: req.body.password};
             }
 
-            User.findOneAndUpdate({username: data.username}, {$set: toSet}, {new: true}, (err, updatedUser) => {
+            User.findOneAndUpdate({_id: data.id}, {$set: toSet}, {new: true}, (err, updatedUser) => {
                 if (err) {
                     if (err.codeName === "DuplicateKey") {
                         return res.status(400).json({error: `That ${field} is already taken`, isDuplicate: true})
@@ -547,43 +541,43 @@ router.put("/:field", (req, res) => {
                     return res.status(404).json({error: "User of specified Username not present in Database"});
                 }
 
-                if (field === "username") {
-                    const payload = {
-                        id: updatedUser.id,
-                        username: updatedUser.username
-                    }
-                    jwt.sign(
-                        payload,
-                        keys.refreshSecret,
-                        {
-                            expiresIn: 10800 // 3 hours in seconds
-                        },
-                        (err, token) => {
-                            const refreshToken = "Bearer " + token;
+                // if (field === "username") {
+                    // const payload = {
+                    //     id: updatedUser.id,
+                    //     username: updatedUser.username
+                    // }
+                    // jwt.sign(
+                    //     payload,
+                    //     keys.refreshSecret,
+                    //     {
+                    //         expiresIn: 10800 // 3 hours in seconds
+                    //     },
+                    //     (err, token) => {
+                    //         const refreshToken = "Bearer " + token;
     
-                            User.findOneAndUpdate({username: updatedUser.username}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
-                                jwt.sign(
-                                    payload,
-                                    keys.authSecret,
-                                    {
-                                        expiresIn: 900 // 15 minutes in seconds
-                                    },
-                                    (err, token) => {
-                                        res.json({
-                                            user: {username: updatedUser.username},
-                                            success: true,
-                                            authToken: "Bearer " + token,
-                                            refreshToken: refreshToken
-                                        });
-                                    }
-                                );
-                            });
-                        }
-                    )
-                } else {
+                    //         User.findOneAndUpdate({username: updatedUser.username}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
+                    //             jwt.sign(
+                    //                 payload,
+                    //                 keys.authSecret,
+                    //                 {
+                    //                     expiresIn: 900 // 15 minutes in seconds
+                    //                 },
+                    //                 (err, token) => {
+                    //                     res.json({
+                    //                         user: {username: updatedUser.username},
+                    //                         success: true,
+                    //                         authToken: "Bearer " + token,
+                    //                         refreshToken: refreshToken
+                    //                     });
+                    //                 }
+                    //             );
+                    //         });
+                    //     }
+                    // )
+                // } else {
                     updatedUser.refreshToken = undefined;
                     return res.json(updatedUser);
-                }
+                // }
             })
         }
     );

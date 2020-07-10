@@ -27,6 +27,10 @@ const JobSchema = new Schema ({
 
 //Create Schema(A template in which data mase using it has to be structured like)
 const UserSchema = new Schema({
+    linkedInID: {
+        type: String,
+        default: ""
+    },
     username: {
         type: String,
         required: true,
@@ -35,7 +39,6 @@ const UserSchema = new Schema({
     password: {
         type: String,
         required: true,
-        unique: true,
         hidden: true
     },
     email: {
@@ -49,8 +52,7 @@ const UserSchema = new Schema({
         required: true
     },
     refreshToken: {
-        type: String,
-        required: true
+        type: String
     },
     verified: {
         type: Boolean,
@@ -61,12 +63,10 @@ const UserSchema = new Schema({
         type: Boolean,
         default: false,
         required: true
-    },
-    date: {
-        type: Date,
-        required: true
     }
-});
+}, {timestamps: true});
+
+UserSchema.index({createdAt: 1}, {expireAfterSeconds: 3*60*60, partialFilterExpression : {verified: false}});
 
 // Exports the model using the specified Schema
 module.exports = mongoose.model("users", UserSchema);

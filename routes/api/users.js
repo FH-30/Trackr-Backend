@@ -674,25 +674,33 @@ router.put("/:field", (req, res) => {
             if (field === "username") {
                 toSet = {username: req.body.username};
             } else if (field === "email") {
-                toSet = {email: req.body.email, verified: false};
+                toSet = {email: req.body.email};
             } else {
                 toSet = {password: req.body.password};
             }
 
-            User.findOneAndUpdate({_id: data.id}, {$set: toSet}, {new: true}, (err, updatedUser) => {
-                if (err) {
-                    if (err.codeName === "DuplicateKey") {
-                        return res.status(400).json({error: `That ${field} is already taken`, isDuplicate: true})
+            User.findOne(toSet).then(user => {
+                if (user && field !== "password") {
+                    return res.status(400).json({error: `That ${field} is already taken`, isDuplicate: true})
+                }
+
+                if (field === "username") {
+                    toSet.usernameSet = true;
+                } else if (field === "email") {
+                    toSet.verified = false;
+                }
+
+                User.findOneAndUpdate({_id: data.id}, {$set: toSet}, {new: true}, (err, updatedUser) => {
+                    if (err) {
+                        return res.status(400).json(err);
+                    }                 
+                    if (updatedUser === null) {
+                        return res.status(404).json({error: "User of specified Username not present in Database"});
                     }
-                    err.isDuplicate = false;
-                    return res.status(400).json(err);
-                }
-                
-                if (updatedUser === null) {
-                    return res.status(404).json({error: "User of specified Username not present in Database"});
-                }
-                updatedUser.refreshToken = undefined;
-                return res.json(updatedUser);
+                    updatedUser.refreshToken = undefined;
+                    return res.json(updatedUser);
+                });
+
             })
         }
     );

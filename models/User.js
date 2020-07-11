@@ -28,8 +28,7 @@ const JobSchema = new Schema ({
 //Create Schema(A template in which data mase using it has to be structured like)
 const UserSchema = new Schema({
     linkedInID: {
-        type: String,
-        unique: true
+        type: String
     },
     username: {
         type: String,

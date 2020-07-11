@@ -30,8 +30,22 @@ if (process.env.NODE_ENV === "production") {
 // Gets the URI of the MongoDB database used by app
 const db = require("./config/keys").mongoURI;
 
+const options = {
+    useNewUrlParser: true,
+    useCreateIndex: true,
+    autoIndex: true, //this is the code I added that solved it all
+    keepAlive: true,
+    poolSize: 10,
+    bufferMaxEntries: 0,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    family: 4, // Use IPv4, skip trying IPv6
+    useFindAndModify: false,
+    useUnifiedTopology: true
+  }
+
 // Connect to the specified MongoDB database
-mongoose.connect(db, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true, useFindAndModify: false})
+mongoose.connect(db, options)
     .then(() => console.log("MongoDB successfully connected"))
     .catch(err => console.log(err));
 

@@ -29,7 +29,7 @@ const JobSchema = new Schema ({
 const UserSchema = new Schema({
     linkedInID: {
         type: String,
-        default: ""
+        unique: true
     },
     username: {
         type: String,
@@ -38,7 +38,6 @@ const UserSchema = new Schema({
     },
     password: {
         type: String,
-        required: true,
         hidden: true
     },
     email: {
@@ -52,7 +51,8 @@ const UserSchema = new Schema({
         required: true
     },
     refreshToken: {
-        type: String
+        type: String,
+        default: ""
     },
     verified: {
         type: Boolean,
@@ -60,6 +60,11 @@ const UserSchema = new Schema({
         required: true
     },
     jobsSorted: {
+        type: Boolean,
+        default: false,
+        required: true
+    },
+    usernameSet: {
         type: Boolean,
         default: false,
         required: true

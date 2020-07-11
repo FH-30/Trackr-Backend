@@ -8,6 +8,9 @@ const isEmpty = require("is-empty");
 const Validator = require("validator");
 const QuickSort = require("optimized-quicksort");
 const moment = require("moment");
+const axios = require('axios').default;
+const url = require("url");
+const labeller = require("../../config/labeller");
 
 // Functions to validate signin/signup
 const validateSignUpInput = require("../../validation/signup");
@@ -53,7 +56,8 @@ router.post("/signup", (req, res) => {
                     const newUser = new User({
                         username: req.body.username,
                         email: req.body.email,
-                        password: req.body.password
+                        password: req.body.password,
+                        usernameSet: true
                     });
     
                     //Hash Password before storing in database
@@ -114,6 +118,8 @@ router.post("/signup", (req, res) => {
                                             });
                                         }
                                     );
+                                }).catch(err => {
+                                    return res.json({err});
                                 });
                         });
                     });
@@ -257,6 +263,151 @@ router.get("/", (req, res) => {
         }
     );
 });
+
+router.get("/linkedin", (req, res) => {
+    const userID = req.query.id; // objectID of present Trackr account
+    if (req.query.error && req.query.error_description) { // user cancelled linkedin login/authorization
+        if (userID) {
+            return res.redirect("http://localhost:3000/login"); // redirect back to sync account page
+        }
+        return res.redirect("http://localhost:3000/login"); // redirect back to signin page
+    }
+    const redirect_uri = "http%3A%2F%2Flocalhost%3A5000%2Fapi%2Fusers%2Flinkedin"
+    if (userID) {
+        redirect_uri += `%3Fid%3D${userID}`;
+    }
+    axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
+    axios.post(`https://www.linkedin.com/oauth/v2/accessToken?grant_type=authorization_code` + 
+    `&code=${req.query.code}&redirect_uri=${redirect_uri}` +
+    `&client_id=86zqfh241jqet5&client_secret=HZtJSVgrSWU0Hzhi`).then(response => {
+        axios.defaults.headers.common['Authorization'] = "Bearer " + response.data.access_token;
+        axios.get("https://api.linkedin.com/v2/me").then(response => {
+            const linkedInUser = response.data;
+            if (userID) {
+                // userID present if user syncing existing trackr account with his/her linkedin account
+                User.findOne({linkedInID: linkedInUser.id}).then(user => {
+                    if (user) {
+                        return res.status(400).json({error: "LinkedIn Account already in use"});
+                    }
+                    User.findOneAndUpdate({_id: userID}, {$set: {linkedInID: linkedInUser.id}}, {new: true}, (err, updatedUser) => {
+                        if (!updatedUser) {
+                            return res.status(404).json({data: "User of specified Data not present in Database"});
+                        }
+                        return res.redirect("http://localhost:3000/login"); // redirect to signed in page
+                    });
+                });
+            } else {
+                User.findOne({linkedInID: linkedInUser.id}).then(user => {
+                    if (!user) {
+                        axios.get("https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))").then(response => {
+                            const emailData = response.data;
+                            const newUser = new User({
+                                username: labeller.label(),
+                                email: emailData.elements[0]["handle~"].emailAddress,
+                                linkedInID: linkedInUser.id,
+                                verified: true
+                            });
+
+                            newUser
+                                .save()
+                                .then(user => {
+                                    const payload = {
+                                        id: user.id,
+                                        username: user.username
+                                    };
+                                    jwt.sign(
+                                        payload,
+                                        keys.refreshSecret,
+                                        {
+                                            expiresIn: 10800 // 3 hours in seconds
+                                        },
+                                        (err, token) => {
+                                            const refreshToken = "Bearer " + token;
+                
+                                            jwt.sign(
+                                                payload,
+                                                keys.authSecret,
+                                                {
+                                                    expiresIn: 900 // 15 minutes in seconds
+                                                },
+                                                (err, token) => {
+                                                    const authToken = "Bearer " + token;
+
+                                                    User.findOneAndUpdate({linkedInID: user.linkedInID}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
+                                                        return res.redirect(url.format({
+                                                            pathname:"http://localhost:3000/login", // redirect to ask username page
+                                                            query: {
+                                                                "authToken": authToken,
+                                                                "refreshToken": refreshToken
+                                                            }
+                                                        }));
+                                                    });
+                                                }
+                                            )
+                                        }
+                                    )
+                                }).catch(err => {
+                                    return res.json({err});
+                                });
+                        })
+                    } else {
+                        const payload = {
+                            id: user.id,
+                        }
+                        if (user.usernameSet) {
+                            payload.username = user.username;
+                        }
+                        jwt.sign(
+                            payload,
+                            keys.refreshSecret,
+                            {
+                                expiresIn: 10800 // 3 hours in seconds
+                            },
+                            (err, token) => {
+                                const refreshToken = "Bearer " + token;
+
+                                jwt.sign(
+                                    payload,
+                                    keys.authSecret,
+                                    {
+                                        expiresIn: 900 // 15 minutes in seconds
+                                    },
+                                    (err, token) => {
+                                        const authToken = "Bearer " + token;
+
+                                        User.findOneAndUpdate({linkedInID: user.linkedInID}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
+                                            if (!updatedUser.usernameSet) {
+                                                return res.redirect(url.format({
+                                                    pathname:"http://localhost:3000/login", // redirect to ask username page
+                                                    query: {
+                                                        "authToken": authToken,
+                                                        "refreshToken": refreshToken
+                                                    }
+                                                }));
+                                            }
+                                            return res.redirect(url.format({
+                                                pathname:"http://localhost:3000/login", // redirect to signed in page
+                                                query: {
+                                                    "authToken": authToken,
+                                                    "refreshToken": refreshToken,
+                                                    "username": updatedUser.username
+                                                }
+                                            }));
+                                        });
+                                    }
+                                )
+                            }
+                        );
+                    }
+                });
+            }
+        }).catch(err => {
+            return res.json(err);
+        })
+    }).catch(err => {
+        return res.json(err);
+    })
+})
 
 router.get("/weeklyJobs", (req, res) => {
     const token = getJWT(req.headers);
@@ -540,44 +691,8 @@ router.put("/:field", (req, res) => {
                 if (updatedUser === null) {
                     return res.status(404).json({error: "User of specified Username not present in Database"});
                 }
-
-                // if (field === "username") {
-                    // const payload = {
-                    //     id: updatedUser.id,
-                    //     username: updatedUser.username
-                    // }
-                    // jwt.sign(
-                    //     payload,
-                    //     keys.refreshSecret,
-                    //     {
-                    //         expiresIn: 10800 // 3 hours in seconds
-                    //     },
-                    //     (err, token) => {
-                    //         const refreshToken = "Bearer " + token;
-    
-                    //         User.findOneAndUpdate({username: updatedUser.username}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
-                    //             jwt.sign(
-                    //                 payload,
-                    //                 keys.authSecret,
-                    //                 {
-                    //                     expiresIn: 900 // 15 minutes in seconds
-                    //                 },
-                    //                 (err, token) => {
-                    //                     res.json({
-                    //                         user: {username: updatedUser.username},
-                    //                         success: true,
-                    //                         authToken: "Bearer " + token,
-                    //                         refreshToken: refreshToken
-                    //                     });
-                    //                 }
-                    //             );
-                    //         });
-                    //     }
-                    // )
-                // } else {
-                    updatedUser.refreshToken = undefined;
-                    return res.json(updatedUser);
-                // }
+                updatedUser.refreshToken = undefined;
+                return res.json(updatedUser);
             })
         }
     );

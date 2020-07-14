@@ -264,11 +264,51 @@ router.get("/", (req, res) => {
     );
 });
 
+router.get("/logo/:companyName", (req, res) => {
+    const token = getJWT(req.headers);
+    const originalAT = axios.defaults.headers.common['Authorization'];
+    jwt.verify(token,
+        keys.authSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+            axios.defaults.headers.common['Authorization'] = "Bearer " + keys.clearBitAPIKey;
+            axios.get(`https://company.clearbit.com/v1/domains/find?name=${req.params.companyName}`).then(response => {
+                return res.json({logo: response.data.logo});
+            }).catch(err => {
+                return res.json(err);
+            }).finally(() => {
+                axios.defaults.headers.common['Authorization'] = originalAT;
+            });
+        });
+});
+
+router.get("/companyPredictions/:input", (req, res) => {
+    const token = getJWT(req.headers);
+    const originalAT = axios.defaults.headers.common['Authorization'];
+    jwt.verify(token,
+        keys.authSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+            axios.defaults.headers.common['Authorization'] = "Bearer " + keys.clearBitAPIKey;
+            axios.get(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${req.params.input}`).then(response => {
+                return res.json(response.data);
+            }).catch(err => {
+                return res.json(err);
+            }).finally(() => {
+                axios.defaults.headers.common['Authorization'] = originalAT;
+            });
+        });
+});
+
 router.get("/linkedin", (req, res) => {
     const userID = req.query.id; // objectID of present Trackr account
     if (req.query.error && req.query.error_description) { // user cancelled linkedin login/authorization
         if (userID) {
-            return res.redirect("http://localhost:3000/login"); // redirect back to sync account page
+            return res.redirect("http://localhost:3000/temporaryPage"); // redirect back to sync account page
         }
         return res.redirect("http://localhost:3000/login"); // redirect back to signin page
     }
@@ -280,7 +320,8 @@ router.get("/linkedin", (req, res) => {
     axios.post(`https://www.linkedin.com/oauth/v2/accessToken?grant_type=authorization_code` + 
     `&code=${req.query.code}&redirect_uri=${redirect_uri}` +
     `&client_id=86zqfh241jqet5&client_secret=HZtJSVgrSWU0Hzhi`).then(response => {
-        axios.defaults.headers.common['Authorization'] = "Bearer " + response.data.access_token;
+        const linkedInAT = response.data.access_token
+        axios.defaults.headers.common['Authorization'] = "Bearer " + linkedInAT;
         axios.get("https://api.linkedin.com/v2/me").then(response => {
             const linkedInUser = response.data;
             if (userID) {
@@ -289,11 +330,11 @@ router.get("/linkedin", (req, res) => {
                     if (user) {
                         return res.status(400).json({error: "LinkedIn Account already in use"});
                     }
-                    User.findOneAndUpdate({_id: userID}, {$set: {linkedInID: linkedInUser.id}}, {new: true}, (err, updatedUser) => {
+                    User.findOneAndUpdate({_id: userID}, {$set: {linkedInID: linkedInUser.id, linkedInAT}}, {new: true}, (err, updatedUser) => {
                         if (!updatedUser) {
                             return res.status(404).json({data: "User of specified Data not present in Database"});
                         }
-                        return res.redirect("http://localhost:3000/login"); // redirect to signed in page
+                        return res.redirect("http://localhost:3000/temporaryPage"); // redirect back to sync account page
                     });
                 });
             } else {
@@ -305,7 +346,8 @@ router.get("/linkedin", (req, res) => {
                                 username: labeller.label(),
                                 email: emailData.elements[0]["handle~"].emailAddress,
                                 linkedInID: linkedInUser.id,
-                                verified: true
+                                verified: true,
+                                linkedInAT
                             });
 
                             newUser
@@ -335,7 +377,7 @@ router.get("/linkedin", (req, res) => {
 
                                                     User.findOneAndUpdate({linkedInID: user.linkedInID}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
                                                         return res.redirect(url.format({
-                                                            pathname:"http://localhost:3000/login", // redirect to ask username page
+                                                            pathname:"http://localhost:3000/temporaryPage", // redirect to ask username page
                                                             query: {
                                                                 "authToken": authToken,
                                                                 "refreshToken": refreshToken
@@ -375,10 +417,10 @@ router.get("/linkedin", (req, res) => {
                                     (err, token) => {
                                         const authToken = "Bearer " + token;
 
-                                        User.findOneAndUpdate({linkedInID: user.linkedInID}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
+                                        User.findOneAndUpdate({linkedInID: user.linkedInID}, {$set: {refreshToken, linkedInAT}}, {new: true}, (err, updatedUser) => {
                                             if (!updatedUser.usernameSet) {
                                                 return res.redirect(url.format({
-                                                    pathname:"http://localhost:3000/login", // redirect to ask username page
+                                                    pathname:"http://localhost:3000/temporaryPage", // redirect to ask username page
                                                     query: {
                                                         "authToken": authToken,
                                                         "refreshToken": refreshToken
@@ -386,7 +428,7 @@ router.get("/linkedin", (req, res) => {
                                                 }));
                                             }
                                             return res.redirect(url.format({
-                                                pathname:"http://localhost:3000/login", // redirect to signed in page
+                                                pathname:"http://localhost:3000/temporaryPage", // redirect to signed in page
                                                 query: {
                                                     "authToken": authToken,
                                                     "refreshToken": refreshToken,
@@ -528,6 +570,7 @@ router.get("/sendVerificationEmail", (req, res) => {
 })
 
 router.put("/jobs", (req, res) => {
+    console.log(req.headers.authorization);
     const token = getJWT(req.headers);
     jwt.verify(token, 
         keys.authSecret,

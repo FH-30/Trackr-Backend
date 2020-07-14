@@ -5,6 +5,7 @@ const refreshSecret = "HHoadrisaonytoo";
 const emailSecret = "FHCHrolaedernimscaeoinnysttoo";
 const emailAddress = "trackr.fraclestudio@gmail.com";
 const emailPassword = "Fracle12345";
+const clearBitAPIKey = "sk_f777a281d6ab2e5d47d8e37b41db1ad2";
 
 module.exports = {
     mongoURI,
@@ -12,5 +13,6 @@ module.exports = {
     refreshSecret,
     emailSecret,
     emailAddress,
-    emailPassword
+    emailPassword,
+    clearBitAPIKey
 }

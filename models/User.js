@@ -30,6 +30,9 @@ const UserSchema = new Schema({
     linkedInID: {
         type: String
     },
+    linkedInAT: {
+        type: String
+    },
     username: {
         type: String,
         required: true,

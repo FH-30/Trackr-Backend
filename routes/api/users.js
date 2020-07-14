@@ -449,7 +449,7 @@ router.get("/linkedin", (req, res) => {
     }).catch(err => {
         return res.json(err);
     })
-})
+});
 
 router.get("/weeklyJobs", (req, res) => {
     const token = getJWT(req.headers);
@@ -470,8 +470,6 @@ router.get("/weeklyJobs", (req, res) => {
                     const getWeeklyJobs = (allJobs) => {
                         const startOfWeek = moment().startOf('isoweek').toDate();  
                         const endOfWeek   = moment().endOf('isoweek').toDate();
-                        console.log(startOfWeek);
-                        console.log(endOfWeek);
 
                         return allJobs.filter(job => {
                             console.log(job.interviewDate);
@@ -522,7 +520,7 @@ router.get("/emailVerification/:token", (req, res) => {
         keys.emailSecret,
         (err, data) => {
             if (err) {
-                return res.status(400).json(err);
+                return res.status(401).json(err);
             }
             User.findOneAndUpdate({_id: data.id}, {$set: {verified: true}}, {new: true}, (err, updatedUser) => {
                 if (updatedUser === null) {
@@ -532,6 +530,39 @@ router.get("/emailVerification/:token", (req, res) => {
             });
         }
     )
+});
+
+router.get("/resetPassword/:token", (req, res) => {
+    const token = req.params.token;
+
+    jwt.verify(
+        token,
+        keys.emailSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+
+            const payload = {
+                id: data.id
+            }
+
+            jwt.sign(
+                payload,
+                keys.authSecret,
+                (err, token) => {
+                    const authToken = "Bearer " + token;
+
+                    return res.redirect(url.format({
+                        pathname:"http://localhost:3000/login", // password recovery email page
+                        query: {
+                            "authToken": authToken,
+                        }
+                    }));
+                }
+            )
+        }
+    );
 });
 
 router.get("/sendVerificationEmail", (req, res) => {
@@ -568,6 +599,59 @@ router.get("/sendVerificationEmail", (req, res) => {
         }
     )
 })
+
+router.get("/sendPasswordRecoveryEmail/:usernameOrEmail", (req, res) => {
+    let usernameOrEmail = req.params.usernameOrEmail;
+
+    let validation;
+    let toFind;
+    let field;
+
+    usernameOrEmail = isEmpty(usernameOrEmail) ? "" : usernameOrEmail;
+
+    if (Validator.isEmail(usernameOrEmail)) {
+        field = "email";
+        toFind = {email: usernameOrEmail};
+        validation = validateCredentialInput(toFind, "email");
+    } else {
+        field = "username";
+        toFind = {username: usernameOrEmail};
+        validation = validateCredentialInput(toFind, "username");
+    }
+
+    const {errors, isValid} = validation;
+
+    if (!isValid) {
+        return res.status(400).json(errors);
+    }
+
+    User.findOne(toFind).then(user => {
+        if (!user) {
+            return res.status(404).json({error: `User of specified ${field} not present in Database`});
+        }
+
+        const payload = {
+            id: user.id,
+            username: user.username
+        };
+
+        jwt.sign(
+            payload,
+            keys.emailSecret,
+            {
+                expiresIn: 900 // 15 minutes in seconds
+            },
+            (err, token) => {
+                const emailSubject = `Reset Your Password: Link expires in 15 minutes`;
+                const emailHTML = `<p>Click on the link below to reset your password:
+                                    http://localhost:5000/api/users/resetPassword/${token}</p>`;
+
+                sendEmail(user.email, emailSubject, emailHTML);
+                return res.json({});
+            }
+        );
+    });
+});
 
 router.put("/jobs", (req, res) => {
     console.log(req.headers.authorization);
@@ -638,7 +722,6 @@ router.put("/jobs", (req, res) => {
                             cancelSchedule();
                         } else {
                             const oneDayMiliseconds = 60 * 60 * 24 * 1000;
-                            const thirtySecondsMiliseconds = 30 * 1000; // for testing purposes
                             const futureDate = new Date(new Date(updatedJob.interviewDate) - oneDayMiliseconds);
                             const toSchedule = (emailSubject, emailHTML) => {
                                 sendEmail(updatedUser.email, emailSubject, emailHTML);
@@ -678,65 +761,35 @@ router.put("/jobs", (req, res) => {
     );
 });
 
-router.put("/:field", (req, res) => {
-    const field = req.params.field;
-
-    if (field !== "username" && field !== "email" && field !== "password") {
-        return res.status(404).json({error: "Page Not Found"});
-    }
-
+router.put("/username", (req, res) => {
     const token = getJWT(req.headers);
+    
     jwt.verify(token, 
         keys.authSecret,
-        async (err, data) => {
+        (err, data) => {
             if (err) {
                 return res.status(401).json(err);
             }
             
-            const {errors, isValid} = validateCredentialInput(req.body, field);
+            const {errors, isValid} = validateCredentialInput(req.body, "username");
 
             if (!isValid) {
                 return res.status(400).json(errors);
             }
-        
-            if (field === "password") {
-                req.body.password = await new Promise((resolve, reject) => { 
-                    bcrypt.genSalt(10, (err, salt) => {
-                        bcrypt.hash(req.body.password, salt, (err, hash) => {
-                            if (err) {
-                                reject(err);
-                            }
-                            resolve(hash); 
-                        });
-                    });
-                });
-            }
 
-            let toSet;
-
-            if (field === "username") {
-                toSet = {username: req.body.username};
-            } else if (field === "email") {
-                toSet = {email: req.body.email};
-            } else {
-                toSet = {password: req.body.password};
-            }
+            let toSet = {username: req.body.username};
 
             User.findOne(toSet).then(user => {
-                if (user && field !== "password") {
-                    return res.status(400).json({error: `That ${field} is already taken`, isDuplicate: true})
+                if (user) {
+                    return res.status(400).json({error: `That username is already taken`, isDuplicate: true})
                 }
 
-                if (field === "username") {
-                    toSet.usernameSet = true;
-                } else if (field === "email") {
-                    toSet.verified = false;
-                }
+                toSet.usernameSet = true;
 
                 User.findOneAndUpdate({_id: data.id}, {$set: toSet}, {new: true}, (err, updatedUser) => {
                     if (err) {
                         return res.status(400).json(err);
-                    }                 
+                    }
                     if (updatedUser === null) {
                         return res.status(404).json({error: "User of specified Username not present in Database"});
                     }
@@ -748,5 +801,73 @@ router.put("/:field", (req, res) => {
         }
     );
 });
+
+router.put("/password", async (req, res) => {
+    const token = getJWT(req.headers);
+    let recoveryEmail = req.query.recovery;
+    
+    jwt.verify(token, 
+        keys.authSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+            
+            let {errors, isValid} = validateCredentialInput(req.body, "password");
+
+            if (!recoveryEmail) {
+                let oldPassword = req.body.oldPassword;
+
+                oldPassword = isEmpty(oldPassword) ? "" : oldPassword;
+
+                if (Validator.isEmpty(oldPassword)) {
+                    errors.oldPassword = "Old password field is required";
+                }
+
+                isValid = isEmpty(errors);
+            }
+
+            if (!isValid) {
+                return res.status(400).json(errors);
+            }
+
+            User.findOne({_id: data.id}).then(user => {
+                if (recoveryEmail) {
+                    req.body.oldPassword = "";
+                }
+                bcrypt.compare(req.body.oldPassword, user.password).then(async (isMatch) => {
+                    if (!recoveryEmail && !isMatch) {
+                        return res.status(400).json({oldPassword: "Old password incorrect"})
+                    }
+
+                    req.body.newPassword = await new Promise((resolve, reject) => { 
+                        bcrypt.genSalt(10, (err, salt) => {
+                            bcrypt.hash(req.body.newPassword, salt, (err, hash) => {
+                                if (err) {
+                                    reject(err);
+                                }
+                                resolve(hash); 
+                            });
+                        });
+                    });
+
+                    let toSet = {password: req.body.newPassword};
+
+                    User.findOneAndUpdate({_id: data.id}, {$set: toSet}, {new: true}, (err, updatedUser) => {
+                        if (err) {
+                            return res.status(400).json(err);
+                        }
+                        if (updatedUser === null) {
+                            return res.status(404).json({error: "User of specified Username not present in Database"});
+                        }
+                        updatedUser.refreshToken = undefined;
+                        return res.json(updatedUser);
+                    });
+                });
+            })
+        }
+    );
+});
+
 
 module.exports = router;

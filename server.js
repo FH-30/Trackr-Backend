@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const passport = require("passport");
 const users = require("./routes/api/users");
 const path = require("path");
+const queryParser = require('express-query-parser')
 
 // Initialize app to a server
 const app = express();
@@ -16,6 +17,14 @@ app.use(express.json());
 app.use(express.urlencoded({
     extended: false
 }));
+
+// Converts booleans in url parameter into actual booleans instead of treating them like string, similarly for null
+app.use(
+    queryParser({
+      parseNull: true,
+      parseBoolean: true
+    })
+);
 
 if (process.env.NODE_ENV === "production") {
     app.use(express.static('client/build'));

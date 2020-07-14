@@ -19,6 +19,7 @@
     "concurrently": "^5.2.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
+    "express-query-parser": "^1.0.2",
     "hashmap": "^2.4.0",
     "is-empty": "^1.2.0",
     "js-priority-queue": "^0.1.5",

@@ -16,11 +16,11 @@ module.exports = (data, fieldName) => {
             errors.username = "Username field is required";
         }
     } else if (fieldName === "password") {
-        data.password = isEmpty(data.password) ? "" : data.password;
+        data.newPassword = isEmpty(data.newPassword) ? "" : data.newPassword;
 
         // Password checks
-        if (Validator.isEmpty(data.password)) {
-            errors.username = "Password field is required";
+        if (Validator.isEmpty(data.newPassword)) {
+            errors.newPassword = "New password field is required";
         }
     } else if (fieldName === "email") {
         data.email = isEmpty(data.email) ? "" : data.email;

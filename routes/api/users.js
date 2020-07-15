@@ -570,8 +570,60 @@ router.get("/resetPassword/:token", (req, res) => {
     );
 });
 
+router.get("/changeEmail/:token", (req, res) => {
+    const token = req.params.token;
+    
+    jwt.verify(
+        token,
+        keys.emailSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+            User.findOneAndUpdate({_id: data.id}, {$set: {email: data.email}}, {new: true}, (err, updatedUser) => {
+                if (updatedUser === null) {
+                    return res.status(404).json({error: "User of specified Username not present in Database"});
+                }
+                scheduler.cancelAllSchedules();
+
+                const toSchedule = (emailSubject, emailHTML) => {
+                    sendEmail(data.email, emailSubject, emailHTML);
+                }
+
+                const schedule = (job) => {
+                    const oneDayMiliseconds = 60 * 60 * 24 * 1000;
+                    const futureDate = new Date(new Date(job.interviewDate) - oneDayMiliseconds);
+
+                    let emailSubject = "";
+                    let emailHTML = "";
+
+                    if (job.status === "toApply") {
+                        emailSubject = `REMINDER: To apply at ${job.company} for ${job.role} position`;
+                        emailHTML = `<p>The application portal at ${job.company} for ${job.role} position is closing in 24 hours! Be sure to apply for it by then!</P>`;
+                    } else if (job.status === "interview") {
+                        emailSubject = `REMINDER: Interview with ${job.company} for ${job.role} position`;
+                        emailHTML = `<p>Your interview with ${job.company} for ${job.role} position is happening in 24 hours! Be sure to prepare for it!</P>`;
+                    } else {
+                        emailSubject = `REMINDER: To respond to offer from ${job.company} for ${job.role} position`;;
+                        emailHTML = `<p>You have 24 hours left to respond to your offer from ${job.company} for ${job.role} position! Be sure to respond by then!</P>`;
+                    }
+                    scheduler.schedule(job.id, futureDate, () => toSchedule(emailSubject, emailHTML));
+                }
+
+                updatedUser.jobs.map(job => {
+                    schedule(job);
+                });
+
+                res.redirect("http://localhost:3000/login"); // email successfully changed page
+            });
+        }
+    )
+});
+
 router.get("/sendVerificationEmail", (req, res) => {
     const token = getJWT(req.headers);
+    const newEmail = req.query.email;
+    const emptyNewEmail = newEmail === "";
 
     jwt.verify(
         token,
@@ -585,6 +637,11 @@ router.get("/sendVerificationEmail", (req, res) => {
                 id: data.id,
                 username: data.username
             }
+
+            if (newEmail) {
+                payload.email = newEmail;
+            }
+
             jwt.sign(
                 payload,
                 keys.emailSecret,
@@ -592,18 +649,45 @@ router.get("/sendVerificationEmail", (req, res) => {
                     expiresIn: 900 // 15 minutes in seconds
                 },
                 (err, token) => {
-                    const emailSubject = `Verify Your Email: Link expires in 15 minutes`;
-                    const emailHTML = `<p>Click on the link below to verify your email:
-                                        http://localhost:5000/api/users/emailVerification/${token}</p>`;
                     User.findOne({_id: data.id}).then(user => {
-                        sendEmail(user.email, emailSubject, emailHTML);
-                        return res.json({});
+                        let emailSubject;
+                        let emailHTML;
+    
+                        if (newEmail || emptyNewEmail) {
+                            const {errors, isValid} = validateCredentialInput({email: newEmail}, "email");
+
+                            if (!isValid) {
+                                return res.status(400).json(errors);
+                            }
+
+                            if (user.email === newEmail) {
+                                return res.status(400).json({email: `Cannot change to the same email address`});
+                            }
+
+                            User.findOne({email: newEmail}).then(user => {
+                                if (user) {
+                                    return res.status(400).json({email: `That email is already taken`})
+                                }
+    
+                                emailSubject = `Change Your Email: Link expires in 15 minutes`;
+                                emailHTML = `<p>Click on the link below to change your email:
+                                                    http://localhost:5000/api/users/changeEmail/${token}</p>`;
+                                sendEmail(newEmail, emailSubject, emailHTML);
+                                return res.json({});
+                            });
+                        } else {
+                            emailSubject = `Verify Your Email: Link expires in 15 minutes`;
+                            emailHTML = `<p>Click on the link below to verify your email:
+                                                http://localhost:5000/api/users/emailVerification/${token}</p>`;
+                            sendEmail(user.email, emailSubject, emailHTML);
+                            return res.json({});
+                        }
                     });
                 }
             );
         }
     )
-})
+});
 
 router.get("/sendPasswordRecoveryEmail/:usernameOrEmail", (req, res) => {
     let usernameOrEmail = req.params.usernameOrEmail;
@@ -659,7 +743,6 @@ router.get("/sendPasswordRecoveryEmail/:usernameOrEmail", (req, res) => {
 });
 
 router.put("/jobs", (req, res) => {
-    console.log(req.headers.authorization);
     const token = getJWT(req.headers);
     jwt.verify(token, 
         keys.authSecret,
@@ -699,6 +782,7 @@ router.put("/jobs", (req, res) => {
                 });
                 return toReturn;
             }
+
             const validation = checkDuplicate();
             if (req.body.add || req.body.updated) {
                 if (validation.duplicatePresent) {
@@ -712,6 +796,8 @@ router.put("/jobs", (req, res) => {
                 toSet.jobsSorted = false;
             }
 
+            let metrics;
+
             User.findOneAndUpdate({_id: data.id}, {$set: toSet}, {new: true}, (err, updatedUser) => {
                 if (err) {
                     return res.status(400).json(err);
@@ -719,6 +805,9 @@ router.put("/jobs", (req, res) => {
                     if (updatedUser === null) {
                         return res.status(404).json({error: "User of specified Username not present in Database"});
                     }
+
+                    metrics = updatedUser.metrics;
+
                     const cancelSchedule = () => {
                         scheduler.cancelSchedule(updatedJob.id);
                     }
@@ -758,8 +847,20 @@ router.put("/jobs", (req, res) => {
                             cancelSchedule(); // In the case of an update there might have been a previously scheduled reminder
                         }
                     }
-                    updatedUser.refreshToken = undefined;
-                    return res.json(updatedUser);
+
+                    if (req.body.add) {
+                        metrics[updatedJob.status] += 1;
+                    } else if (req.body.updated) {
+                        metrics[updatedJob.oldStatus] -= 1;
+                        metrics[updatedJob.status] += 1;
+                    } else {
+                        metrics[updatedJob.status] -= 1;
+                    }
+
+                    User.findOneAndUpdate({_id: data.id}, {$set: {metrics}}, {new: true}, (err, updatedUser) => {
+                        updatedUser.refreshToken = undefined;
+                        return res.json(updatedUser);
+                    });
                 }
             });
         }
@@ -786,7 +887,7 @@ router.put("/username", (req, res) => {
 
             User.findOne(toSet).then(user => {
                 if (user) {
-                    return res.status(400).json({error: `That username is already taken`, isDuplicate: true})
+                    return res.status(400).json({error: `That username is already taken`})
                 }
 
                 toSet.usernameSet = true;

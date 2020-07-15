@@ -12,7 +12,17 @@ const cancelSchedule = (label) => {
     }
 }
 
+const cancelAllSchedules = () => {
+    const obj = scheduler.scheduledJobs;
+    for (const label in obj){
+        if (Object.prototype.hasOwnProperty.call(obj, label)) {
+            cancelSchedule(label);
+        }
+    }
+}
+
 module.exports = {
     schedule,
-    cancelSchedule
+    cancelSchedule,
+    cancelAllSchedules
 }

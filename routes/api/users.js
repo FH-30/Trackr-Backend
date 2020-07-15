@@ -451,8 +451,9 @@ router.get("/linkedin", (req, res) => {
     })
 });
 
-router.get("/weeklyJobs", (req, res) => {
+router.get("/sortedJobs", (req, res) => {
     const token = getJWT(req.headers);
+    const weekly = req.query.weekly;
 
     jwt.verify(
         token,
@@ -472,8 +473,6 @@ router.get("/weeklyJobs", (req, res) => {
                         const endOfWeek   = moment().endOf('isoweek').toDate();
 
                         return allJobs.filter(job => {
-                            console.log(job.interviewDate);
-                            console.log(new Date(job.interviewDate));
                             if (new Date(job.interviewDate) >= startOfWeek && new Date(job.interviewDate) <= endOfWeek) {
                                 return true;
                             }
@@ -482,8 +481,11 @@ router.get("/weeklyJobs", (req, res) => {
                     }
 
                     if (user.jobsSorted) {
-                        const filteredJobs = getWeeklyJobs(jobs);
-                        return res.json({jobs: filteredJobs});
+                        if (weekly) {
+                            const filteredJobs = getWeeklyJobs(jobs);
+                            return res.json({jobs: filteredJobs});
+                        }
+                        return res.json({jobs});
                     }
 
                     const comparator = (job1, job2) => {
@@ -503,8 +505,11 @@ router.get("/weeklyJobs", (req, res) => {
                         if (err) {
                             return res.status(400).json(err);
                         }
-                        const filteredJobs = getWeeklyJobs(updatedUser.jobs);
-                        return res.json({jobs: filteredJobs});
+                        if (weekly) {
+                            const filteredJobs = getWeeklyJobs(updatedUser.jobs);
+                            return res.json({jobs: filteredJobs});
+                        }
+                        return res.json({jobs: updatedUser.jobs});
                     })
                 }
             })

@@ -345,7 +345,12 @@ router.get("/linkedin", (req, res) => {
 
                             User.findOne({email}).then(user => {
                                 if (user) {
-                                    return res.status(400).json({error: "Email already in use with a Trackr account"});
+                                    return res.status(400).redirect(url.format({
+                                        pathname:"http://localhost:3000/temporaryPage", // redirect to ask username page
+                                        query: {
+                                            "error": "Email already in use with a Trackr account"
+                                        }
+                                    }));
                                 }
 
                                 const newUser = new User({

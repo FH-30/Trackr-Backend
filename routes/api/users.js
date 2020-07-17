@@ -341,56 +341,63 @@ router.get("/linkedin", (req, res) => {
                 User.findOne({linkedInID: linkedInUser.id}).then(user => {
                     if (!user) {
                         axios.get("https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))").then(response => {
-                            const emailData = response.data;
-                            const newUser = new User({
-                                username: labeller.label(),
-                                email: emailData.elements[0]["handle~"].emailAddress,
-                                linkedInID: linkedInUser.id,
-                                verified: true,
-                                linkedInAT
-                            });
+                            const email = response.data.elements[0]["handle~"].emailAddress;
 
-                            newUser
-                                .save()
-                                .then(user => {
-                                    const payload = {
-                                        id: user.id,
-                                        username: user.username
-                                    };
-                                    jwt.sign(
-                                        payload,
-                                        keys.refreshSecret,
-                                        {
-                                            expiresIn: 10800 // 3 hours in seconds
-                                        },
-                                        (err, token) => {
-                                            const refreshToken = "Bearer " + token;
-                
-                                            jwt.sign(
-                                                payload,
-                                                keys.authSecret,
-                                                {
-                                                    expiresIn: 900 // 15 minutes in seconds
-                                                },
-                                                (err, token) => {
-                                                    const authToken = "Bearer " + token;
+                            User.findOne({email}).then(user => {
+                                if (user) {
+                                    return res.status(400).json({error: "Email already in use with a Trackr account"});
+                                }
 
-                                                    User.findOneAndUpdate({linkedInID: user.linkedInID}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
-                                                        return res.redirect(url.format({
-                                                            pathname:"http://localhost:3000/temporaryPage", // redirect to ask username page
-                                                            query: {
-                                                                "authToken": authToken,
-                                                                "refreshToken": refreshToken
-                                                            }
-                                                        }));
-                                                    });
-                                                }
-                                            )
-                                        }
-                                    )
-                                }).catch(err => {
-                                    return res.json({err});
+                                const newUser = new User({
+                                    username: labeller.label(),
+                                    email: email,
+                                    linkedInID: linkedInUser.id,
+                                    verified: true,
+                                    linkedInAT
                                 });
+    
+                                newUser
+                                    .save()
+                                    .then(user => {
+                                        const payload = {
+                                            id: user.id,
+                                            username: user.username
+                                        };
+                                        jwt.sign(
+                                            payload,
+                                            keys.refreshSecret,
+                                            {
+                                                expiresIn: 10800 // 3 hours in seconds
+                                            },
+                                            (err, token) => {
+                                                const refreshToken = "Bearer " + token;
+                    
+                                                jwt.sign(
+                                                    payload,
+                                                    keys.authSecret,
+                                                    {
+                                                        expiresIn: 900 // 15 minutes in seconds
+                                                    },
+                                                    (err, token) => {
+                                                        const authToken = "Bearer " + token;
+    
+                                                        User.findOneAndUpdate({linkedInID: user.linkedInID}, {$set: {refreshToken}}, {new: true}, (err, updatedUser) => {
+                                                            return res.redirect(url.format({
+                                                                pathname:"http://localhost:3000/temporaryPage", // redirect to ask username page
+                                                                query: {
+                                                                    "authToken": authToken,
+                                                                    "refreshToken": refreshToken
+                                                                }
+                                                            }));
+                                                        });
+                                                    }
+                                                )
+                                            }
+                                        )
+                                    }).catch(err => {
+                                        return res.json({err});
+                                    });
+                            });
                         })
                     } else {
                         const payload = {
@@ -699,11 +706,11 @@ router.get("/sendPasswordRecoveryEmail/:usernameOrEmail", (req, res) => {
     usernameOrEmail = isEmpty(usernameOrEmail) ? "" : usernameOrEmail;
 
     if (Validator.isEmail(usernameOrEmail)) {
-        field = "email";
+        field = "Email";
         toFind = {email: usernameOrEmail};
         validation = validateCredentialInput(toFind, "email");
     } else {
-        field = "username";
+        field = "Username";
         toFind = {username: usernameOrEmail};
         validation = validateCredentialInput(toFind, "username");
     }
@@ -715,8 +722,8 @@ router.get("/sendPasswordRecoveryEmail/:usernameOrEmail", (req, res) => {
     }
 
     User.findOne(toFind).then(user => {
-        if (!user) {
-            return res.status(404).json({error: `User of specified ${field} not present in Database`});
+        if (!user || user.password === undefined) {
+            return res.status(404).json({error: `${field} not found`});
         }
 
         const payload = {
@@ -887,7 +894,12 @@ router.put("/username", (req, res) => {
 
             User.findOne(toSet).then(user => {
                 if (user) {
-                    return res.status(400).json({error: `That username is already taken`})
+                    User.findOne({_id: data.id}).then(user => {
+                        if (user.username === req.body.username) {
+                            return res.json(user);
+                        }
+                        return res.status(400).json({error: `That username is already taken`});
+                    });
                 }
 
                 toSet.usernameSet = true;

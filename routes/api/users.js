@@ -308,11 +308,11 @@ router.get("/linkedin", (req, res) => {
     const userID = req.query.id; // objectID of present Trackr account
     if (req.query.error && req.query.error_description) { // user cancelled linkedin login/authorization
         if (userID) {
-            return res.redirect("http://localhost:3000/temporaryPage"); // redirect back to sync account page
+            return res.redirect("http://localhost:3000/SyncLinkedIn"); // redirect back to sync account page
         }
         return res.redirect("http://localhost:3000/login"); // redirect back to signin page
     }
-    const redirect_uri = "http%3A%2F%2Flocalhost%3A5000%2Fapi%2Fusers%2Flinkedin"
+    let redirect_uri = "http%3A%2F%2Flocalhost%3A5000%2Fapi%2Fusers%2Flinkedin"
     if (userID) {
         redirect_uri += `%3Fid%3D${userID}`;
     }
@@ -328,13 +328,18 @@ router.get("/linkedin", (req, res) => {
                 // userID present if user syncing existing trackr account with his/her linkedin account
                 User.findOne({linkedInID: linkedInUser.id}).then(user => {
                     if (user) {
-                        return res.status(400).json({error: "LinkedIn Account already in use"});
+                        return res.status(400).redirect(url.format({
+                            pathname: "http://localhost:3000/SyncLinkedIn", // redirect back to sync account page
+                            query: {
+                                "error": "LinkedIn Account already in use"
+                            }
+                        }));
                     }
                     User.findOneAndUpdate({_id: userID}, {$set: {linkedInID: linkedInUser.id, linkedInAT}}, {new: true}, (err, updatedUser) => {
                         if (!updatedUser) {
                             return res.status(404).json({data: "User of specified Data not present in Database"});
                         }
-                        return res.redirect("http://localhost:3000/temporaryPage"); // redirect back to sync account page
+                        return res.redirect("http://localhost:3000/SyncLinkedIn"); // redirect back to sync account page
                     });
                 });
             } else {
@@ -571,7 +576,7 @@ router.get("/resetPassword/:token", (req, res) => {
                     const authToken = "Bearer " + token;
 
                     return res.redirect(url.format({
-                        pathname:"http://localhost:3000/login", // password recovery email page
+                        pathname: "http://localhost:3000/newPassword", // password recovery email page
                         query: {
                             "authToken": authToken,
                         }
@@ -626,7 +631,7 @@ router.get("/changeEmail/:token", (req, res) => {
                     schedule(job);
                 });
 
-                res.redirect("http://localhost:3000/login"); // email successfully changed page
+                res.redirect("http://localhost:3000/changedEmail"); // email changed successfully page
             });
         }
     )

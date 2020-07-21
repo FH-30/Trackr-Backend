@@ -328,12 +328,7 @@ router.get("/linkedin", (req, res) => {
                 // userID present if user syncing existing trackr account with his/her linkedin account
                 User.findOne({linkedInID: linkedInUser.id}).then(user => {
                     if (user) {
-                        return res.status(400).redirect(url.format({
-                            pathname: "http://localhost:3000/SyncLinkedIn", // redirect back to sync account page
-                            query: {
-                                "error": "LinkedIn Account already in use"
-                            }
-                        }));
+                        return res.status(400).redirect("http://localhost:3000/syncerror"); // redirect to sync error page
                     }
                     User.findOneAndUpdate({_id: userID}, {$set: {linkedInID: linkedInUser.id, linkedInAT}}, {new: true}, (err, updatedUser) => {
                         if (!updatedUser) {

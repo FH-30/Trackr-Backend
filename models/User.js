@@ -22,6 +22,9 @@ const JobSchema = new Schema ({
     },
     interviewDate: {
         type: String
+    },
+    logo: {
+        type: String
     }
 });
 

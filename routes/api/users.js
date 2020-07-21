@@ -81,7 +81,7 @@ router.post("/signup", (req, res) => {
                                         payload,
                                         keys.refreshSecret,
                                         {
-                                            expiresIn: 10800 // 3 hours in seconds
+                                            expiresIn: 172800 // 2 days in seconds
                                         },
                                         (err , token) => {
                                             const refreshToken = "Bearer " + token;
@@ -91,7 +91,7 @@ router.post("/signup", (req, res) => {
                                                     payload,
                                                     keys.authSecret,
                                                     {
-                                                        expiresIn: 900 // 15 minutes in seconds
+                                                        expiresIn: 7200 // 2 hours in seconds
                                                     },
                                                     (err , token) => {
                                                         res.json({
@@ -104,7 +104,7 @@ router.post("/signup", (req, res) => {
                                                             payload,
                                                             keys.emailSecret,
                                                             {
-                                                                expiresIn: 900 // 15 minutes in seconds
+                                                                expiresIn: 7200 // 2 hours in seconds
                                                             },
                                                             (err, token) => {
                                                                 const emailSubject = `Verify Your Email: Link expires in 15 minutes`;
@@ -177,7 +177,7 @@ router.post("/signin", (req, res) => {
                     payload,
                     keys.refreshSecret,
                     {
-                        expiresIn: 10800 // 3 hours in seconds
+                        expiresIn: 172800 // 2 days in seconds
                     },
                     (err, token) => {
                         const refreshToken = "Bearer " + token;
@@ -187,7 +187,7 @@ router.post("/signin", (req, res) => {
                                 payload,
                                 keys.authSecret,
                                 {
-                                    expiresIn: 900 // 15 minutes in seconds
+                                    expiresIn: 7200 // 2 hours in seconds
                                 },
                                 (err, token) => {
                                     res.json({
@@ -230,7 +230,7 @@ router.post("/refreshAuthToken", (req, res) => {
                         payload,
                         keys.authSecret,
                         {
-                            expiresIn: 900 // 15 miutes in seconds
+                            expiresIn: 7200 // 15 miutes in seconds
                         },
                         (err, token) => {
                             return res.json({authToken: "Bearer " + token});
@@ -377,7 +377,7 @@ router.get("/linkedin", (req, res) => {
                                             payload,
                                             keys.refreshSecret,
                                             {
-                                                expiresIn: 10800 // 3 hours in seconds
+                                                expiresIn: 172800 // 2 days in seconds
                                             },
                                             (err, token) => {
                                                 const refreshToken = "Bearer " + token;
@@ -386,7 +386,7 @@ router.get("/linkedin", (req, res) => {
                                                     payload,
                                                     keys.authSecret,
                                                     {
-                                                        expiresIn: 900 // 15 minutes in seconds
+                                                        expiresIn: 7200 // 2 hours in seconds
                                                     },
                                                     (err, token) => {
                                                         const authToken = "Bearer " + token;
@@ -420,7 +420,7 @@ router.get("/linkedin", (req, res) => {
                             payload,
                             keys.refreshSecret,
                             {
-                                expiresIn: 10800 // 3 hours in seconds
+                                expiresIn: 172800 // 2 days in seconds
                             },
                             (err, token) => {
                                 const refreshToken = "Bearer " + token;
@@ -429,7 +429,7 @@ router.get("/linkedin", (req, res) => {
                                     payload,
                                     keys.authSecret,
                                     {
-                                        expiresIn: 900 // 15 minutes in seconds
+                                        expiresIn: 7200 // 2 hours in seconds
                                     },
                                     (err, token) => {
                                         const authToken = "Bearer " + token;
@@ -663,7 +663,7 @@ router.get("/sendVerificationEmail", (req, res) => {
                 payload,
                 keys.emailSecret,
                 {
-                    expiresIn: 900 // 15 minutes in seconds
+                    expiresIn: 7200 // 2 hours in seconds
                 },
                 (err, token) => {
                     User.findOne({_id: data.id}).then(user => {
@@ -745,7 +745,7 @@ router.get("/sendPasswordRecoveryEmail/:usernameOrEmail", (req, res) => {
             payload,
             keys.emailSecret,
             {
-                expiresIn: 900 // 15 minutes in seconds
+                expiresIn: 7200 // 2 hours in seconds
             },
             (err, token) => {
                 const emailSubject = `Reset Your Password: Link expires in 15 minutes`;

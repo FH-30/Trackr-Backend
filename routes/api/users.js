@@ -860,13 +860,38 @@ router.put("/jobs", (req, res) => {
                         }
                     }
 
+                    // if (req.body.add) {
+                    //     metrics[updatedJob.status] += 1;
+                    // } else if (req.body.updated) {
+                    //     metrics[updatedJob.oldStatus] -= 1;
+                    //     metrics[updatedJob.status] += 1;
+                    // } else {
+                    //     metrics[updatedJob.status] -= 1;
+                    // }
+
+                    const getArrIdx = (status) => {
+                        if (status === "toApply") {
+                            return 0;
+                        }
+                        if (status === "applied") {
+                            return 1;
+                        }
+                        if (status === "interview") {
+                            return 2;
+                        }
+                        return 3;
+                    }
+
+                    const newStatus = getArrIdx(updatedJob.status);
+
                     if (req.body.add) {
-                        metrics[updatedJob.status] += 1;
+                        metrics[newStatus] += 1;
                     } else if (req.body.updated) {
-                        metrics[updatedJob.oldStatus] -= 1;
-                        metrics[updatedJob.status] += 1;
+                        const oldStatus = getArrIdx(updatedJob.oldStatus);
+                        metrics[oldStatus] -= 1;
+                        metrics[newStatus] += 1;
                     } else {
-                        metrics[updatedJob.status] -= 1;
+                        metrics[newStatus] -= 1;
                     }
 
                     User.findOneAndUpdate({_id: data.id}, {$set: {metrics}}, {new: true}, (err, updatedUser) => {

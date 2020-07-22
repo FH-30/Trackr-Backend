@@ -28,25 +28,25 @@ const JobSchema = new Schema ({
     }
 });
 
-const metricsSchema = new Schema ({
-    _id: false,
-    toApply: {
-        type: Number,
-        default: 0
-    },
-    applied: {
-        type: Number,
-        default: 0
-    },
-    interview: {
-        type: Number,
-        default: 0
-    },
-    offer: {
-        type: Number,
-        default: 0
-    }
-})
+// const metricsSchema = new Schema ({
+//     _id: false,
+//     toApply: {
+//         type: Number,
+//         default: 0
+//     },
+//     applied: {
+//         type: Number,
+//         default: 0
+//     },
+//     interview: {
+//         type: Number,
+//         default: 0
+//     },
+//     offer: {
+//         type: Number,
+//         default: 0
+//     }
+// })
 
 //Create Schema(A template in which data mase using it has to be structured like)
 const UserSchema = new Schema({
@@ -95,13 +95,14 @@ const UserSchema = new Schema({
         required: true
     },
     metrics : {
-        type: metricsSchema,
-        default: {
-            toApply: 0,
-            applied: 0,
-            interview: 0,
-            offer: 0
-        }
+        type: Array,
+        default: [0, 0, 0, 0]
+        // default: {
+        //     toApply: 0,
+        //     applied: 0,
+        //     interview: 0,
+        //     offer: 0
+        // }
     }
 }, {timestamps: true});
 

@@ -100,6 +100,9 @@ const UserSchema = new Schema({
     },
     coordinates: {
         type: Array
+    },
+    place: {
+        type: String,
     }
 }, {timestamps: true});
 

@@ -4,13 +4,22 @@ const mongoose = require("mongoose");
 const passport = require("passport");
 const users = require("./routes/api/users");
 const path = require("path");
-const queryParser = require('express-query-parser')
+const queryParser = require('express-query-parser');
+const helmet = require("helmet");
+const compression = require('compression');
 
 // Initialize app to a server
 const app = express();
 const cors = require("cors");
 
-app.use(cors());
+var corsOptions = {
+    origin: 'http://localhost:3000',
+}
+
+app.use(cors(corsOptions));
+app.use(helmet());
+app.use(compression());
+
 
 // Allows body-parsing of JSON files
 app.use(express.json());

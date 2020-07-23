@@ -94,15 +94,12 @@ const UserSchema = new Schema({
         default: false,
         required: true
     },
-    metrics : {
+    metrics: {
         type: Array,
         default: [0, 0, 0, 0]
-        // default: {
-        //     toApply: 0,
-        //     applied: 0,
-        //     interview: 0,
-        //     offer: 0
-        // }
+    },
+    coordinates: {
+        type: Array
     }
 }, {timestamps: true});
 

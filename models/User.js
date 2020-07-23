@@ -25,6 +25,12 @@ const JobSchema = new Schema ({
     },
     logo: {
         type: String
+    },
+    coordinates: {
+        type: Array
+    },
+    place: {
+        type: String,
     }
 });
 
@@ -97,12 +103,6 @@ const UserSchema = new Schema({
     metrics: {
         type: Array,
         default: [0, 0, 0, 0]
-    },
-    coordinates: {
-        type: Array
-    },
-    place: {
-        type: String,
     }
 }, {timestamps: true});
 

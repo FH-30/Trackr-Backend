@@ -11,6 +11,7 @@ const moment = require("moment");
 const axios = require('axios').default;
 const url = require("url");
 const labeller = require("../../config/labeller");
+const limit = require("express-rate-limit");
 
 // Functions to validate signin/signup
 const validateSignUpInput = require("../../validation/signup");
@@ -23,6 +24,13 @@ const getJWT = require("../../verification/getJWT");
 
 // Load User model (Using Schema made in another file)
 const User = require("../../models/User");
+
+const limitAPI = limit({
+    windowMs: 60 * 1000, // 60 seconds
+    max: 4, // max 1 request
+    skipFailedRequests: true,
+    message: "Too many requests, please wait 1 minute."
+})
 
 // @route POST api/users/register
 // @desc Sign Up user
@@ -163,6 +171,10 @@ router.post("/signin", (req, res) => {
             }
         }
 
+        if (!user.password) {
+            user.password = "";
+        }
+
         bcrypt.compare(password, user.password).then(isMatch => {
             if (isMatch) {
                 if (!user.verified) {
@@ -262,6 +274,18 @@ router.get("/", (req, res) => {
             })
         }
     );
+});
+
+router.get("/googleAPIKey", (req, res) => {
+    const token = getJWT(req.headers);
+    jwt.verify(token,
+        keys.authSecret,
+        (err, data) => {
+            if (err) {
+                return res.status(401).json(err);
+            }
+            return res.json({API_Key: keys.googleAPIKey});
+        })
 });
 
 router.get("/logo/:companyName", (req, res) => {
@@ -632,7 +656,7 @@ router.get("/changeEmail/:token", (req, res) => {
     )
 });
 
-router.get("/sendVerificationEmail", (req, res) => {
+router.get("/sendVerificationEmail", limitAPI, (req, res) => {
     const token = getJWT(req.headers);
     const newEmail = req.query.email;
     const emptyNewEmail = newEmail === "";
@@ -701,7 +725,7 @@ router.get("/sendVerificationEmail", (req, res) => {
     )
 });
 
-router.get("/sendPasswordRecoveryEmail/:usernameOrEmail", (req, res) => {
+router.get("/sendPasswordRecoveryEmail/:usernameOrEmail", limitAPI, (req, res) => {
     let usernameOrEmail = req.params.usernameOrEmail;
 
     let validation;

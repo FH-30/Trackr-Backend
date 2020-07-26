@@ -358,7 +358,7 @@ router.get("/linkedin", (req, res) => {
                         if (!updatedUser) {
                             return res.status(404).json({data: "User of specified Data not present in Database"});
                         }
-                        return res.redirect("http://localhost:3000/SyncLinkedIn"); // redirect back to sync account page
+                        return res.redirect("https://orbital-trackr.herokuapp.com/"); // redirect back to homepage
                     });
                 });
             } else {
@@ -954,20 +954,20 @@ router.put("/username", (req, res) => {
                         }
                         return res.status(400).json({error: `That username is already taken`});
                     });
+                } else {
+                    toSet.usernameSet = true;
+
+                    User.findOneAndUpdate({_id: data.id}, {$set: toSet}, {new: true}, (err, updatedUser) => {
+                        if (err) {
+                            return res.status(400).json(err);
+                        }
+                        if (updatedUser === null) {
+                            return res.status(404).json({error: "User of specified Username not present in Database"});
+                        }
+                        updatedUser.refreshToken = undefined;
+                        return res.json(updatedUser);
+                    });
                 }
-
-                toSet.usernameSet = true;
-
-                User.findOneAndUpdate({_id: data.id}, {$set: toSet}, {new: true}, (err, updatedUser) => {
-                    if (err) {
-                        return res.status(400).json(err);
-                    }
-                    if (updatedUser === null) {
-                        return res.status(404).json({error: "User of specified Username not present in Database"});
-                    }
-                    updatedUser.refreshToken = undefined;
-                    return res.json(updatedUser);
-                });
 
             })
         }

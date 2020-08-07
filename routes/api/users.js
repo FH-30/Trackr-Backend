@@ -791,40 +791,41 @@ router.put("/jobs", (req, res) => {
             const {errors, isValid, hasInterviewDate} = validateJobInput(updatedJob);
         
             if (!isValid) {
+                console.log(errors);
                 return res.status(400).json(errors);
             }
 
-            const checkDuplicate = () => {
-                let first = true;
-                const toReturn = {};
-                toReturn.duplicatePresent = false;
-                req.body.jobs.map(job => {
-                    if (updatedJob.company === job.company && updatedJob.role === job.role) {
-                        if (first) {
-                            first = false;
-                        } else {
-                            toReturn.duplicatePresent = true;
-                            let first = true;
-                            toReturn.removeDuplicateArr = req.body.update.jobs.filter(job => {
-                                const notDuplicate = updatedJob.company !== job.company && updatedJob.role !== job.role
-                                if (!notDuplicate && first) {
-                                    first = false;
-                                    return true;
-                                }
-                                return notDuplicate;
-                            });
-                        }
-                    }
-                });
-                return toReturn;
-            }
+            // const checkDuplicate = () => {
+            //     let first = true;
+            //     const toReturn = {};
+            //     toReturn.duplicatePresent = false;
+            //     req.body.jobs.map(job => {
+            //         if (updatedJob.company === job.company && updatedJob.role === job.role) {
+            //             if (first) {
+            //                 first = false;
+            //             } else {
+            //                 toReturn.duplicatePresent = true;
+            //                 let first = true;
+            //                 toReturn.removeDuplicateArr = req.body.update.jobs.filter(job => {
+            //                     const notDuplicate = updatedJob.company !== job.company && updatedJob.role !== job.role
+            //                     if (!notDuplicate && first) {
+            //                         first = false;
+            //                         return true;
+            //                     }
+            //                     return notDuplicate;
+            //                 });
+            //             }
+            //         }
+            //     });
+            //     return toReturn;
+            // }
 
-            const validation = checkDuplicate();
-            if (req.body.add || req.body.updated) {
-                if (validation.duplicatePresent) {
-                    return res.status(400).json({error: "Job already in Dashboard", jobs: validation.removeDuplicateArr});
-                }
-            }
+            // const validation = checkDuplicate();
+            // if (req.body.add || req.body.updated) {
+            //     if (validation.duplicatePresent) {
+            //         return res.status(400).json({error: "Job already in Dashboard", jobs: validation.removeDuplicateArr});
+            //     }
+            // }
 
             const toSet = {jobs: req.body.jobs};
 

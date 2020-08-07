@@ -1,4 +1,10 @@
 // Import statements
+const result = require('dotenv').config()
+ 
+if (result.error) {
+  throw result.error
+}
+
 const express = require("express");
 const mongoose = require("mongoose");
 const passport = require("passport");
@@ -51,7 +57,7 @@ const db = require("./config/keys").mongoURI;
 const options = {
     useNewUrlParser: true,
     useCreateIndex: true,
-    autoIndex: true, //this is the code I added that solved it all
+    // autoIndex: true,
     keepAlive: true,
     poolSize: 10,
     bufferMaxEntries: 0,
